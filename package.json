@@ -1,0 +1,36 @@
+{
+  "name": "dev",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www",
+    "dev": "SET DEBUG=gis:* & nodemon ./bin/www"
+  },
+  "eslintIgnore": [
+    "require.js",
+    "settings.json"
+  ],
+  "dependencies": {
+    "cookie-parser": "~1.4.3",
+    "ejs": "~2.5.7",
+    "express": "~4.16.0",
+    "fancy-log": "^1.3.2",
+    "express-ejs-layouts": "~2.4.0",
+    "http-errors": "~1.6.2",
+    "socket.io": "^2.1.1",
+    "socket.io-client": "^2.1.1",
+    "sqlite3": "~4.0.1",
+    "uuid": "^3.3.2"
+  },
+  "devDependencies": {
+    "log": "^1.4.0",
+    "debug": "~2.6.9",
+    "eslint": "^5.0.1",
+    "eslint-plugin-import": "^2.13.0",
+    "eslint-plugin-node": "^6.0.1",
+    "eslint-plugin-promise": "^3.8.0",
+    "eslint-plugin-standard": "^3.1.0",
+    "morgan": "~1.9.0",
+    "nodemon": "^1.17.5"
+  }
+}

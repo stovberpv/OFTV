@@ -1,0 +1,248 @@
+:root {
+    --schoolbus:  255, 225, 000; /* #FFE100 */
+    --carnation:  244, 066, 095; /* #F4425F */
+    --malachite:  006, 216, 095; /* #06D85F */
+    --cerulean:   000, 164, 228; /* #00A4E4 */
+    --vulcan:     016, 018, 029; /* #10121D */
+
+    --white:      255, 255, 255; /* #FFFFFF */
+    --black:      000, 000, 000; /* #000000 */
+}
+
+/* #region document */
+html,
+body {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+}
+body {
+    top: 0;
+    left: 0;
+}
+/* #endregion */
+
+/* #region page */
+.wrapper.page {
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+.wrapper.page .container {
+    padding: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#map-page {
+    position: relative;
+}
+/* #endregion */
+
+/* #region map */
+#map {
+    box-shadow: 0 0 10px 0px rgba(var(--black), .5);
+    border-radius: 3px;
+    overflow: hidden;
+    height: calc(100% - 10px);
+    width: calc(100% - 10px);
+    top: 5px;
+    left: 5px;
+    position: relative;
+}
+/* #endregion */
+
+/* #region ymaps */
+[class^="ymaps-"][class*="balloon "]{
+    padding: 0 !important;
+    border-radius: 3px !important;
+    box-shadow: 0 0 5px 0px rgba(var(--vulcan), .5) !important;
+}
+[class^="ymaps-"][class*="balloon__layout"]{
+    border-radius: 3px !important;
+}
+/* #endregion */
+
+/* #region contextmenu */
+.contextmenu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: none;
+    background-color: white;
+    box-shadow: 0 0 10px 0 rgba(var(--black), .5);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.contextmenu ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.contextmenu ul li {
+    padding: 5px;
+    cursor: pointer;
+    user-select: none;
+    transition: all .3s;
+    -webkit-transition: all .3s;
+    -moz-transition: all .3s;
+    -ms-transition: all .3s;
+    -o-transition: all .3s;
+    color: rgba(var(--vulcan), .9);
+}
+.contextmenu ul li:hover {
+    background-color: rgba(var(--schoolbus), .8);
+}
+.contextmenu ul li#remove:hover {
+    color: rgba(var(--white), .9);
+    background-color: rgba(var(--carnation), .9);
+}
+/* #endregion */
+
+/* #region globals */
+.visible {
+    display: unset;
+}
+/* #endregion */
+
+/* #region popup */
+.popup {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(var(--white), 1);
+    border-radius: 3px;
+    box-shadow: 0 0 10px 1px rgba(var(--black), .5);
+    user-select: none;
+    -webkit-transform: translate(-50%, -50%);
+    -moz-transform: translate(-50%, -50%);
+    -ms-transform: translate(-50%, -50%);
+    -o-transform: translate(-50%, -50%);
+}
+.popup .title {
+    color: rgba(var(--white), 1);
+    background-color: rgba(var(--cerulean), 1);
+    padding: 10px;
+    text-align: center;
+    border-radius: 3px 3px 0 0;
+    cursor: move;
+    font-weight: bold;
+}
+.popup .controls {
+    display: inline-flex;
+    width: 100%;
+}
+.popup .controls .button {
+    width: 50%;
+    padding: 10px;
+    cursor: pointer;
+    transition: all .3s;
+    text-align: center;
+}
+.popup .controls .button:hover {
+    color: rgba(var(--white), 1);
+}
+.popup .controls .button.first {
+    border-radius: 0px 0px 0px 3px;
+}
+.popup .controls .button.last {
+    border-radius: 0px 0px 3px 0px;
+}
+.popup .controls .button.yes:hover {
+    background-color: rgba(var(--carnation), 1);
+}
+.popup .controls .button.no:hover {
+    background-color: rgba(var(--malachite), 1);
+}
+.popup .controls .button.save:hover {
+    background-color: rgba(var(--malachite), 1);
+}
+.popup .controls .button.close:hover {
+    background-color: rgba(var(--carnation), 1);
+}
+/* #endregion */
+
+/* #region route node */
+ymaps > div.wrapper {
+    margin-top: 10px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: auto;
+    grid-gap: 20px 10px;
+}
+ymaps > div.wrapper div {
+    position: relative;
+    width: calc(100% - 2px);
+    border: 1px solid rgba(var(--vulcan), .2);
+    border-radius: 3px;
+    transition: all .5s;
+}
+ymaps > div.wrapper div:hover {
+    background-color: transparent;
+    border-color: rgba(var(--carnation), 1);
+}
+ymaps > div.wrapper div:hover label {
+    border-color: transparent;
+    background-color: rgba(var(--carnation), 1);
+    color: white;
+}
+ymaps > div.wrapper div:hover input {
+    color: rgba(var(--carnation), 1);
+}
+ymaps > div.wrapper div label {
+    position: absolute;
+    top: -10px;
+    left: 5px;
+    background-color: rgba(var(--white), 1);
+    padding: 0 5px;
+    border-radius: 3px;
+    color: rgba(var(--vulcan), .5);
+    transition: .5s;
+    border: 1px solid rgba(var(--vulcan), .2);
+    line-height: 18px;
+    text-transform: lowercase;
+}
+ymaps > div.wrapper div input {
+    border: none;
+    outline: none;
+    padding: 15px 5px 5px 5px;
+    width: calc(100% - 10px);
+    border-radius: 3px;
+    background-color: transparent;
+    color: rgba(var(--vulcan), .8);
+    line-height: 15px;
+}
+ymaps > div.wrapper div.coordinates,
+ymaps > div.wrapper div.coordinatePath,
+ymaps > div.wrapper div.guid { display: none; }
+
+ymaps > div.wrapper div.name {
+    grid-area: 1 / span 3;
+}
+ymaps > div.wrapper div.description {
+    grid-area: 2 / span 3;
+}
+ymaps > div.wrapper div.routeDescription {
+    grid-area: 1 / span 3;
+}
+ymaps > div.wrapper div.cableDescription {
+    grid-area: 2 / span 3;
+}
+ymaps > div.wrapper div.cableLabelA {
+    grid-area: 3 / 1;
+}
+ymaps > div.wrapper div.cableLabelB {
+    grid-area: 3 / 2;
+}
+ymaps > div.wrapper div.cableLength {
+    grid-area: 3 / 3;
+}
+ymaps > div.wrapper div.cableCores {
+    grid-area: 4 / 1;
+}
+ymaps > div.wrapper div.cableType {
+    grid-area: 4 / 3;
+}
+/* #endregion */

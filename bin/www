@@ -1,0 +1,6 @@
+#!/usr/bin/env node
+var { server, port } = require.main.require('../server/server');
+
+require.main.require('../server/socketio')(server);
+
+server.listen(port, '0.0.0.0');

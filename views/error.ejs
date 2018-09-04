@@ -1,0 +1,15 @@
+<div class='wrapper page error-page'>
+    <div class='container'>
+        <div id='error'>
+            <h1 id='message'>
+                <%= message %>
+            </h1>
+            <h2 id='status'>
+                <%= error.status %>
+            </h2>
+            <pre id='stack-trace'>
+                    <%= error.stack %>
+                </pre>
+        </div>
+    </div>
+</div>

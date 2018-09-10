@@ -1,66 +1,23 @@
-define(['./properties', './view', './controller', './helper'], function (Properties, View, Controller, Helper) {
+define([], function () {
     'use strict';
 
-    function Node () {
-        // TODO : utils checkGuid
-        let checkGUID = guid => {
-            if (typeof guid !== 'string' || guid.length < 32) throw new Error(`Incorrect GUID: ${guid}`)
-            return guid;
+    function Node (obj) {
+        let node = {
+            type: 'node',
+            guid: obj.guid ? obj.guid : null,
+            isDeprecated: obj.isDeprecated ? obj.isDeprecated : null,
+            coordinates: obj.coordinates ? obj.coordinates : null,
+            name: obj.name ? obj.name : null,
+            description: obj.description ? obj.description : null
         };
 
-        let _guid = null;
-        let _isDeprecated = null;
-        let _properties = new Properties();
-        let _view = new View();
-        let _controller = new Controller();
-        let _helper = new Helper();
+        this.giud = { set: val => node.guid = val, get: () => { return node.guid; } };
+        this.isDeprecated = { set: val => node.isDeprecated = val, get: () => { return node.isDeprecated; } };
+        this.coordinates = { set: val => node.coordinates = val, get: () => { return node.coordinates; } };
+        this.name = { set: val => node.name = val, get: () => { return node.name; } };
+        this.description = { set: val => node.description = val, get: () => { return node.description; } };
 
-        this.setGuid = guid => _guid = checkGUID(guid);
-        this.getGuid = () => { return _guid; };
-
-        this.setIsDeprecated = isDeprecated => _isDeprecated = isDeprecated;
-        this.getIsDeprecated = () => { return _isDeprecated; };
-
-        this.setPropertу = (property, value) => { _properties.set(property, value); };
-        this.getPropertу = property => { return _properties.get(property); };
-
-        this.getView = () => { return _view };
-        this.getController = () => { return _controller };
-        this.getHelper = () => { return _helper };
-        this.getProperties = () => { return _properties };
-
-        this.create = node => {
-            _guid = node.guid ? node.guid : null;
-            _isDeprecated = node.isDeprecated ? node.isDeprecated : false;
-            _properties.set('coordinates', node.coordinates || '');
-            _properties.set('name', node.name || '');
-            _properties.set('description', node.description || '');
-
-            return this;
-        }
-
-        this.render = () => {
-            return this.getHelper()
-                        .attachTo(this.getView().render('dom'))
-                        .fillView(this.getProperties().getAll())
-                        .getView();
-        };
-
-        this.read = (dom, html) => {
-            return this.getHelper()
-                        .attachTo(dom, html)
-                        .readView();
-        };
-
-        this.toObject = () => {
-            return {
-                guid: _guid,
-                isDeprecated: _isDeprecated,
-                coordinates: _properties.get('coordinates'),
-                name: _properties.get('name'),
-                description: _properties.get('description'),
-            };
-        };
+        this.toPrimitive = () => { return node; }
 
         return this;
     }

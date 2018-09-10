@@ -1,8 +1,8 @@
-define(['./route', './view', './helper', './controller'], function (Route, View, Helper, Controller) {
+define(['./route', './view', './helper', './controller'], function (Route, view, Helper, Controller) {
     console.log('Route loaded');
     return {
         Route: Route,
-        View: View,
+        view: view,
         Helper: Helper,
         Controller: Controller
     };

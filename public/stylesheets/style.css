@@ -23,6 +23,12 @@ body {
 }
 /* #endregion */
 
+/* #region global */
+.hidden {
+    display: none;
+}
+/* #endregion */
+
 /* #region page */
 .wrapper.page {
     position: relative;
@@ -214,9 +220,6 @@ ymaps > div.wrapper div input {
     color: rgba(var(--vulcan), .8);
     line-height: 15px;
 }
-ymaps > div.wrapper div.coordinates,
-ymaps > div.wrapper div.coordinatePath,
-ymaps > div.wrapper div.guid { display: none; }
 
 ymaps > div.wrapper div.name {
     grid-area: 1 / span 3;
@@ -224,25 +227,25 @@ ymaps > div.wrapper div.name {
 ymaps > div.wrapper div.description {
     grid-area: 2 / span 3;
 }
-ymaps > div.wrapper div.routeDescription {
+ymaps > div.wrapper div.route-description {
     grid-area: 1 / span 3;
 }
-ymaps > div.wrapper div.cableDescription {
+ymaps > div.wrapper div.cable-description {
     grid-area: 2 / span 3;
 }
-ymaps > div.wrapper div.cableLabelA {
+ymaps > div.wrapper div.cable-label-a {
     grid-area: 3 / 1;
 }
-ymaps > div.wrapper div.cableLabelB {
+ymaps > div.wrapper div.cable-label-b {
     grid-area: 3 / 2;
 }
-ymaps > div.wrapper div.cableLength {
+ymaps > div.wrapper div.cable-length {
     grid-area: 3 / 3;
 }
-ymaps > div.wrapper div.cableCores {
+ymaps > div.wrapper div.cable-cores {
     grid-area: 4 / 1;
 }
-ymaps > div.wrapper div.cableType {
+ymaps > div.wrapper div.cable-type {
     grid-area: 4 / 3;
 }
 /* #endregion */

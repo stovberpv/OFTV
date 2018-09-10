@@ -17,10 +17,8 @@ define([], function () {
         this.onConnectError = cb => _socket.on('connect_error', cb);
         // Fired upon a connection timeout.
         this.onConnectTimeout = cb => _socket.on('connect_timeout', cb);
-
         // Fired upon a successful reconnection.
         this.onDisconnect = cb => _socket.on('disconnect', cb);
-
         // Fired upon a successful reconnection.
         this.onReconnect = cb => _socket.on('reconnect', cb);
         // Fired upon a successful reconnection.
@@ -38,14 +36,17 @@ define([], function () {
         //
         //----------------------------------------------------------------------
 
-        this.onNetworkResources = (cb, context = null, args = null) => _socket.on('network resources acquired', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
-        this.emitNetworkResources = opts => _socket.emit('network resources', opts);
+        this.onNetworkResources = (cb, context = null, args = null) => _socket.on('network resources requested', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
+        this.emitNetworkResources = opts => _socket.emit('network resources request', opts);
 
-        this.onNetworkResourcesUpdated = (cb, context = null, args = null) => _socket.on('network resources updated', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
-        this.emitNetworkResourcesUpdate = opts => _socket.emit('network resources update', opts);
+        this.onNetworkResourcesAdd = (cb, context = null, args = null) => _socket.on('network resource add', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
+        this.emitNetworkResourcesAdd = opts => _socket.emit('network resource add', opts);
 
-        this.onNetworkResourcesRemoved = (cb, context = null, args = null) => _socket.on('network resources removed', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
-        this.emitNetworkResourcesRemove = opts => _socket.emit('network resources remove', opts);
+        this.onNetworkResourcesUpdated = (cb, context = null, args = null) => _socket.on('network resource updated', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
+        this.emitNetworkResourcesUpdate = opts => _socket.emit('network resource update', opts);
+
+        this.onNetworkResourcesRemoved = (cb, context = null, args = null) => _socket.on('network resource removed', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
+        this.emitNetworkResourcesRemove = opts => _socket.emit('network resource remove', opts);
 
         return this;
     }

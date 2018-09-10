@@ -12,25 +12,9 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         let _objectCollection = null;
         let _objectCluster = null;
 
-        let _isInitialized = {
-            contextMenu: false,
-            mapGlobalEvents: false,
-            customControls: false,
-            draggablePlacemark: false,
-            edittablePolyline: false,
-            objectCollection: false,
-            objectCluster: false
-        };
-        /*
-        let _geoObjectNamesList = {
-            CLUSTERER: 'clusterer',
-            GEO_OBJECT: 'geoObject'
-        }
-        */
         this.getMap = () => { return _ymap; };
         this.getContextMenu = () => { return _contextMenu; };
         this.getEditablePolyline = () => { return _edittablePolyline; };
-        // this.getGeoObjectNamesList = () => { return _geoObjectNamesList; }
         this.getObjectCollection = () => { return _objectCollection; }
         this.getObjectCluster = () => { return _objectCluster; }
 
@@ -47,6 +31,14 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         this.showBounds = () => {
             let bounds = _ymap.geoObjects.getBounds();
             bounds && _ymap.setBounds(bounds, { checkZoomRange: true });
+        }
+
+        this.addLayout = (name, layout) => {
+            ymaps.layout.storage.add(`custom#${name}`, ymaps.templateLayoutFactory.createClass(layout));
+        }
+
+        this.getLayout = name => {
+            return ymaps.layout.storage.get(`custom#${name}`);
         }
 
         this.createObject = opts => {
@@ -124,66 +116,72 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         };
 
         this.createPolyline = opts => {
-            let properties = properties => {
+            let properties = (properties => {
                 let data = {
-                    hintContent: properties.hintContent ? properties.hintContent : null,
-                    balloonContent: properties.balloonContent ? properties.balloonContent : null,
-                    balloonContentLayout: properties.balloonContentLayout ? ymaps.templateLayoutFactory.createClass(properties.balloonContentLayout) : null,
-                    external: properties.external ? properties.external : {}
+                    hintContent: properties.hintContent || null,
+                    balloonContent: properties.balloonContent || null,
+                    external: properties.external || {}
                 };
 
                 for (let k in data) if (!data[k]) delete data[k];
 
                 return new ymaps.data.Manager(data);
-            };
+            })(opts.properties);
 
-            let options = () => {
-                /*
-                return {
+            let options = (options => {
+                let data = {
+                    /*
                     strokeColor: ['F4425F', 'FFFFFF'],
                     strokeOpacity: [1, 0.5],
                     strokeStyle: '5 2',  // Первая цифра - длина штриха. Вторая - длина разрыва.
                     strokeWidth: [5, 4]
-                };
-                */
-                return {
+                    */
                     strokeColor: 'F4425F',
                     strokeOpacity: 1,
-                    strokeWidth: 4
+                    strokeWidth: 4,
+                    balloonContentLayout: options.balloonContentLayout || null,
                 };
-            };
 
-            return new ymaps.Polyline(opts.geometry, properties(opts.properties), options());
+                for (let k in data) if (!data[k]) delete data[k];
+
+                return data;
+            })(opts.options);
+
+            return new ymaps.Polyline(opts.geometry, properties, options);
         };
 
         this.createPlacemark = opts => {
-            let properties = properties => {
+            let properties = (properties => {
                 let data = {
-                    iconCaption: properties.iconCaption ? properties.iconCaption : null,
-                    hintContent: properties.hintContent ? properties.hintContent : null,
-                    balloonContent: properties.balloonContent ? properties.balloonContent : null,
-                    balloonContentHeader: properties.balloonContentHeader ? properties.balloonContentHeader : null,
-                    balloonContentBody: properties.balloonContentBody ? properties.balloonContentBody : null,
-                    balloonContentFooter: properties.balloonContentFooter ? properties.balloonContentFooter : null,
-                    balloonContentLayout: properties.balloonContentLayout ? ymaps.templateLayoutFactory.createClass(properties.balloonContentLayout) : null,
-                    clusterCaption: properties.clusterCaption ? properties.clusterCaption : null,
-                    external: properties.external ? properties.external : {}
+                    iconCaption: properties.iconCaption || null,
+                    hintContent: properties.hintContent || null,
+                    balloonContent: properties.balloonContent || null,
+                    balloonContentHeader: properties.balloonContentHeader || null,
+                    balloonContentBody: properties.balloonContentBody || null,
+                    balloonContentFooter: properties.balloonContentFooter || null,
+                    clusterCaption: properties.clusterCaption || null,
+                    external: properties.external || {}
                 };
 
                 for (let k in data) if (!data[k]) delete data[k];
 
                 return new ymaps.data.Manager(data);
-            };
+            })(opts.properties);
 
-            let options = () => {
-                return {
+            let options = (options => {
+                let data = {
                     iconColor: '#F4425F',
                     preset: 'islands#glyphCircleIcon',
-                    iconCaptionMaxWidth: '150'
+                    iconCaptionMaxWidth: '150',
+                    balloonContentLayout: options.balloonContentLayout || null,
                 };
-            };
 
-            return new ymaps.Placemark(opts.geometry, properties(opts.properties), options())
+                for (let k in data) if (!data[k]) delete data[k];
+
+                return data;
+            })(opts.options);
+
+            return new ymaps.Placemark(opts.geometry, properties, options);
         };
 
         this.removeGeoObject = object => {
@@ -308,8 +306,6 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             _objectCluster = new ymaps.Clusterer(options());
 
             _ymap.geoObjects.add(_objectCluster);
-
-            _isInitialized.objectCluster = true;
         };
 
         this.initializeObjectCollection = opts => {
@@ -319,22 +315,19 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             _objectCollection = new ymaps.Collection(options());
 
             _ymap.geoObjects.add(_objectCollection);
-
-            _isInitialized.objectCollection = true;
         };
 
+        // FIX 
         this.initializeDraggablePlacemark = opts => {
-            if (_isInitialized.draggablePlacemark) return;
-
             function Mark (o) {
                 let mark = null;
                 let loca = { ciry: '', street: '', house: '', latitude: null, longitude: null }; // localities
                 let prop = { iconCaption: 'Поиск адреса...', iconContent: '', external: o.properties.external };
                 let opts = { iconColor: '#F4425F', preset: 'islands#redCircleDotIconWithCaption', draggable: true }; //  blueStretchyIcon DotIconWithCaption
 
-                let hint = function () { return { iconCaption: 'Новая точка', balloonContent: balloonContent() }; };
+                let hint = function () { return { iconCaption: 'Зафиксировать' /* 'Новая точка', balloonContent: balloonContent() */ }; };
                 let onGeocoded = function (e) { let geo = e.geoObjects.get(0); loca.city = geo.getLocalities()[0]; loca.street = geo.getThoroughfare() || geo.getPremise() || ''; this.get().properties.set(hint()); };
-                let balloonContent = function () { return `<div class='draggable-placemark wrapper'><div class='name'><label>Адрес</label><input type='text' value='${loca.city}, ${loca.street}'></div><div class='coordinates'><label>Координаты</label><input type='text' value='${loca.longitude},${loca.latitude}'></div></div>`; };
+                let balloonContent = function () { return `<div class='draggable-placemark wrapper'><div class='name'><label>Адрес</label><input type='text' value='${loca.city}, ${loca.street}'></div><div class='coordinates hidden'><label>Координаты</label><input type='text' value='${loca.longitude},${loca.latitude}'></div></div>`; };
 
                 this.init = function (coords) { loca.longitude = coords[0]; loca.latitude = coords[1]; return this; };
                 this.create = function () { mark = new ymaps.Placemark([loca.longitude, loca.latitude], prop, opts); return this; };
@@ -348,13 +341,9 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             };
 
             _draggblePlacemark = new Mark(opts);
-
-            _isInitialized.draggablePlacemark = true;
         };
 
         this.initializeEditablePolyline = opts => {
-            if (_isInitialized.edittablePolyline) return;
-
             function Polyline () {
                 let _polyline = null;
                 let _placemarks = {};
@@ -374,17 +363,17 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
 
                 this.render = ymap => {
                     if (Object.keys(_placemarks).length === 0) return;
-                    if (!_polyline){
+                    if (!_polyline) {
                         _polyline = new ymaps.Polyline(getCoordinates(),
-                        {
-                            external: opts.properties.external
-                        },
-                        {
-                            strokeColor: ['FFF', 'F4425F'],
-                            strokeOpacity: [.85, 1],
-                            strokeStyle: ['1 0', '1 2'],  // Первая цифра - длина штриха. Вторая - длина разрыва.
-                            strokeWidth: [6, 4]
-                        });
+                            {
+                                external: opts.properties.external
+                            },
+                            {
+                                strokeColor: ['FFF', 'F4425F'],
+                                strokeOpacity: [.85, 1],
+                                strokeStyle: ['1 0', '1 2'],  // Первая цифра - длина штриха. Вторая - длина разрыва.
+                                strokeWidth: [6, 4]
+                            });
                         ymap.geoObjects.add(_polyline);
                     }
 
@@ -397,13 +386,9 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             }
 
             _edittablePolyline = new Polyline();
-
-            _isInitialized.edittablePolyline = true;
         };
 
         this.initializeCustomControls = opts => {
-            if (_isInitialized.customControls) return;
-
             let button = new ymaps.control.Button({
                 data: {
                     content: opts.data.content || '',
@@ -423,13 +408,9 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             button.events.add('press', opts.cb);
 
             this._ymap.controls.add(button);
-
-            _isInitialized.customControls = true;
         };
 
         this.initializeContextMenu = opts => {
-            if (_isInitialized.contextMenu) return;
-
             function ContextMenu () {
                 let _id = null;
                 let _contextMenu = null;
@@ -522,13 +503,9 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             }
 
             _contextMenu = new ContextMenu();
-
-            _isInitialized.contextMenu = true;
         };
 
         this.initializeMapGlobalEvents = opts => {
-            if (_isInitialized.mapGlobalEvents) return;
-
             function closeContextMenu (e) { _contextMenu.hide(e); _contextMenu.close(e); }
 
             function graggablePlacemark (e) {
@@ -544,10 +521,8 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             }
 
             _ymap.events.add('click', graggablePlacemark.bind(this));
-            _ymap.events.add('mousedown', closeContextMenu.bind(this));
             _ymap.events.add('click', closeContextMenu.bind(this));
-
-            _isInitialized.mapGlobalEvents = true;
+            _ymap.events.add('mousedown', closeContextMenu.bind(this));
         };
 
         return this;

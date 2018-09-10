@@ -1,6 +1,12 @@
 define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index', 'popup/index'], function (config, socket, ymap, node, route, utils, popup) {
     'use strict';
 
+    /*
+        TODO : Две точки с одинаковыми координатами - придумать реализацию, не сохранять или сохранять но как тогда удалять?
+        FIX :
+        NOTE :
+        DEBUG :
+    */
     function App () {
         let _config = config;
         let _socket = null;
@@ -17,38 +23,42 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
 
             function placemark (node) {
                 return _ymap.createPlacemark({
-                    geometry: node.getPropertу('coordinates'),
+                    geometry: node.coordinates.get(),
                     properties: {
-                        iconCaption: node.getPropertу('name'),
-                        hintContent: node.getPropertу('description'),
-                        balloonContent: node.getView().render('html'),
-                        clusterCaption: node.getPropertу('name'),
-                        external: { type: 'node', guid: node.getGuid(), isDeprecated: node.getIsDeprecated() }
+                        iconCaption: node.name.get(),
+                        hintContent: node.description.get(),
+                        clusterCaption: node.name.get(),
+                        external: node.toPrimitive()
+                    },
+                    options: {
+                        balloonContentLayout: _ymap.getLayout('node')
                     }
                 });
             }
 
             function polyline (route) {
                 return _ymap.createPolyline({
-                    geometry: route.getPropertу('coordinatePath'),
+                    geometry: route.coordinatePath.get(),
                     properties: {
-                        hintContent: route.getPropertу('routeDescription') || route.getPropertу('cableDescription'),
-                        balloonContent: route.getView().render('html'),
-                        external: { type: 'route', guid: route.getGuid(), isDeprecated: route.getIsDeprecated() }
+                        hintContent: route.routeDescription.get() || route.cableDescription.get(),
+                        external: route.toPrimitive()
+                    },
+                    options: {
+                        balloonContentLayout: _ymap.getLayout('route')
                     }
                 });
             }
 
             return (networkResourceType, networkResourceObject) => {
-                (networkResourceType === 'node') && (() => {
+                ('node' === networkResourceType) && (() => {
                     let clusterer = _ymap.getObjectCluster();
-                    let mapObject = placemark(new Node().create(networkResourceObject));
+                    let mapObject = placemark(new Node(networkResourceObject));
                     clusterer.getGeoObjects().forEach(o => (o.properties.get('external').guid === mapObject.properties.get('external').guid) && clusterer.remove(o));
                     !mapObject.properties.get('external').isDeprecated && clusterer.add(mapObject);
                 })();
-                (networkResourceType === 'route') && (() => {
+                ('route' === networkResourceType) && (() => {
                     let collection = _ymap.getObjectCollection();
-                    let mapObject = polyline(new Route().create(networkResourceObject));
+                    let mapObject = polyline(new Route(networkResourceObject));
                     collection.each(o => (o.properties.get('external').guid === mapObject.properties.get('external').guid) && collection.remove(o));
                     !mapObject.properties.get('external').isDeprecated && collection.add(mapObject);
                 })();
@@ -66,43 +76,44 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
 
             function createList (prop) {
                 return [
-                    (prop.type === 'node' && !prop.routePoint) ? { id: 'check', text: 'Трасса: добавить' } : null,
-                    (prop.type === 'node' && prop.routePoint) ? { id: 'uncheck', text: 'Трасса: исключить' } : null,
-                    (prop.type === 'node' && prop.routePoint) ? { id: 'complete', text: 'Трасса: завершить' } : null,
-                    (prop.type === 'node' || prop.type === 'route') && { id: 'update', text: 'Редактировать описание' },
-                    (prop.type === 'node' || prop.type === 'route') && { id: 'remove', text: 'Удалить' },
+                    ('node' === prop.type && !prop.routePoint) ? { id: 'check', text: 'Трасса: добавить' } : null,
+                    ('node' === prop.type && prop.routePoint) ? { id: 'uncheck', text: 'Трасса: исключить' } : null,
+                    ('node' === prop.type && prop.routePoint) ? { id: 'complete', text: 'Трасса: завершить' } : null,
+                    (('node' === prop.type || 'route' === prop.type) && !prop.editable) ? { id: 'update', text: 'Редактировать описание' } : null,
+                    ('node' === prop.type || 'route' === prop.type) ? { id: 'remove', text: 'Удалить' } : null,
                 ];
             }
 
             return async e => {
-                if (e.get('target').options.getName() === 'cluster') return;
+                if ('cluster' === e.get('target').options.getName()) return;
                 let target = e.get('target');
                 let extProp = target.properties.get('external');
-                let list = createList({ type: extProp.type, routePoint: extProp.routePoint });
+                let list = createList({ type: extProp.type, routePoint: extProp.routePoint, editable: extProp.editable });
                 let clicked = await ymap.getContextMenu().setList(list).render().setPosition(e.get('pagePixels')).show().onClick('listmenu');
-                if (clicked.target.id === 'check') {
+                const id = clicked.target.id;
+                if ('check' === id) {
                     extProp.routePoint = true;
                     ymap.getEditablePolyline().addPlacemark({ id: extProp.guid, placemark: target }).render(ymap.getMap());
-                } else if (clicked.target.id === 'uncheck') {
+                } else if ('uncheck' === id) {
                     delete extProp.routePoint;
                     ymap.getEditablePolyline().delPlacemark({ id: extProp.guid }).render(ymap.getMap());
-                } else if (clicked.target.id === 'complete') {
+                } else if ('complete' === id) {
                     let ep = ymap.getEditablePolyline();
                     let placemarks = ep.getPlacemarkAll();
                     for (let p in placemarks) { delete placemarks[p].properties.get('external').routePoint }
                     let coordinatePath = ep.getCoordinates().reduce((p, c) => { return `${p} ${c}`; });
-                    socket.getRoutes().emitNetworkResourcesUpdate({ type: 'route', data: new Route().create({ coordinatePath: coordinatePath }).toObject() });
+                    socket.getRoutes().emitNetworkResourcesUpdate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
                     ep.reset();
-                } else if (clicked.target.id === 'update') {
+                } else if ('update' === id) {
                     extProp.editable = true;
-                    target.options.set('iconColor', '#FFE100');
+                    if ('node' === extProp.type) target.options.set('iconColor', '#FFE100'); else if ('route' === extProp.type) target.options.set('strokeColor', '#FFE100');
                     target.balloon.open();
-                } else if (clicked.target.id === 'remove') {
+                } else if ('remove' === id) {
                     let popup = new Popup()
                         .setTitle('Удалить соединение?')
                         .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
-                        .create()
-                        .setEventListener('yes', () => popup.close(), socket.getRoutes().emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }))
+                        .render()
+                        .setEventListener('yes', () => { popup.close(); socket.getRoutes().emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); })
                         .setEventListener('no', () => popup.close())
                         .show();
                     utils.setDraggable(popup.getDOM(), '.title');
@@ -110,13 +121,35 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
             };
         };
 
+        // DEBUG _balloonOpenHandler после реализации серверной части
+        let _balloonOpenHandler = () => {
+            let Node = _node.Node;
+            let Route = _route.Route;
+            let socket = _socket;
+
+            async function getNetworkResources (o) {
+                let extProp = o.properties.get('external');
+                if (!['node', 'route'].includes(extProp.type)) return;
+                let fetch = new Promise(resolve => {
+                    socket.getRoutes().onNetworkResources(r => resolve(r))
+                    socket.getRoutes().emitNetworkResources({ type: extProp.type, guid: extProp.guid });
+                });
+                fetch.then(result => {
+                    let data = ('node' === extProp.type) ? Node(result) : (('route' === extProp.type) && Route(result));
+                    Object.assign(extProp, data.toPrimitive());
+                }, () => {});
+            }
+
+            return e => (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => getNetworkResources(o));
+        };
+
         // DEBUG _balloonCloseHandler после реализации серверной части
         let _balloonCloseHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
-            let socket = _socket;
-            let utils = _utils.utils;
             let Popup = _popup.Popup;
+            let utils = _utils.utils;
+            let socket = _socket.getRoutes();
 
             function prompt () {
                 return new Promise((resolve, reject) => {
@@ -131,42 +164,40 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                 });
             }
 
-            function setNetworkResources (o) {
-                let extProp = o.properties.get('external');
-                let networdResource = extProp.type === 'node' ? new Node() : (extProp.type === 'route' ? new Route() : (extProp.type === 'blueprint' ? new Node() : null));
-                if (!networdResource) return;
-                socket.getRoutes().emitNetworkResourcesUpdate({ type: extProp.type, data: networdResource.create(networdResource.read(null, o.properties.get('balloonContent'))).toObject() });
-            }
-
             return async e => {
-                if (e.get('cluster') || !e.get('target').properties.get('external').editable) return;
-                try { await prompt(); } catch (e) { return; };
-                setNetworkResources(e.get('target'));
-                e.get('target').properties.get('external').editable = false;
-                e.get('target').options.set('iconColor', '#F4425F');
+                if (e.get('cluster')) return;
+                let target = e.get('target');
+                let extProp = target.properties.get('external');
+
+                switch (extProp.type) {
+                    case 'node':
+                        if (extProp.editable) {
+                            prompt().then(() => {
+                                socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
+                                extProp.editable = false;
+                                target.options.set('iconColor', '#F4425F');
+                            }, () => {});
+                        }
+                        return;
+
+                    case 'route':
+                        if (extProp.editable) {
+                            prompt().then(() => {
+                                socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
+                                extProp.editable = false;
+                                target.options.set('strokeColor', '#F4425F');
+                            }, () => {});
+                        }
+                        return;
+
+                    case 'blueprint':
+                        // TODO :
+                        break;
+
+                    default:
+                        break;
+                }
             };
-        };
-
-        // DEBUG _balloonOpenHandler после реализации серверной части
-        let _balloonOpenHandler = () => {
-            let Node = _node.Node;
-            let Route = _route.Route;
-            let socket = _socket;
-
-            function getNetworkResources (object) {
-                let networdResources = new Promise((resolve, reject) => socket.getRoutes().onNetworkResources(r => resolve(r)));
-                socket.getRoutes().emitNetworkResources(object);
-                return networdResources;
-            }
-
-            async function setBalloonContent (o) {
-                let extProp = o.properties.get('external');
-                let networdResource = extProp.type === 'node' ? new Node() : extProp.type === 'route' ? new Route() : null;
-                if (!networdResource) return;
-                o.properties.set('balloonContent', networdResource.create(await getNetworkResources(extProp)).render().outerHTML);
-            }
-
-            return e => (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => setBalloonContent(o));
         };
 
         this.run = async () => {
@@ -192,10 +223,14 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                 return new Promise(async (resolve, reject) => {
                     try { await _ymap.load() } catch (e) { reject(e); }
                     _ymap.attachTo('map');
+                    _ymap.addLayout('route', _route.view.render());
+                    _ymap.addLayout('node', _node.view.render());
                     _ymap.initializeObjectCluster();
                     _ymap.initializeObjectCollection();
+                    // FIX :
                     _ymap.initializeDraggablePlacemark({ properties: { external: { type: 'blueprint', editable: true } } });
                     _ymap.initializeEditablePolyline({ properties: { external: { type: 'blueprint' } } });
+
                     _ymap.initializeContextMenu();
                     _ymap.initializeMapGlobalEvents();
                     _ymap.getObjectCluster()

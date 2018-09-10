@@ -10,16 +10,18 @@ module.exports = function (server) {
     function onConnection (socket) {
         log(`${cv.FgBlue}New connection established. ${cv.FgCyan}IP::${socket.request.connection.remoteAddress}${cv.Reset}`);
         socket.on('disconnect', () => log(`${cv.FgRed}Socket connection was closed. ${cv.FgCyan}IP::${socket.request.connection.remoteAddress}${cv.Reset}`));
-        socket.on('network resources', request => { console.log('network resources'); });
-        socket.on('node add', request => { console.log('node add'); });
-        socket.on('node update', request => { console.log('node update'); });
-        socket.on('node remove', request => { console.log('node remove'); });
-        socket.on('route add', request => { console.log('route add'); });
-        socket.on('route update', request => { console.log('route update'); });
-        socket.on('route remove', request => { console.log('route remove'); });
-        socket.on('node fetch', request => { console.log('node fetch'); });
-        socket.on('rote fetch', request => { console.log('rote fetch'); });
-
+        socket.on('network resources request', request => { console.log(`network resources request ${JSON.stringify(request)}`); });
+        socket.on('network resource add', request => { console.log(`network resource add ${JSON.stringify(request)}`); });
+        socket.on('network resource update', request => { console.log(`network resource update ${JSON.stringify(request)}`); });
+        socket.on('network resource remove', request => { console.log(`network resource remove ${JSON.stringify(request)}`); });
+/*
+network resources requested
+network resources request
+network resource updated
+network resource update
+network resource removed
+network resource remove
+*/
 // emitNetworkResources
 // emitNodeAdd
 // emitNodeUpdate

@@ -1,22 +1,23 @@
-define(['ymaps', 'utils/index'], function (ymaps, utils) {
+define(['ymaps'], function (ymaps) {
     'use strict';
 
     function Ymap () {
-        let _stateConfig = { center: [44.914436, 34.085001], controls: ['zoomControl', 'typeSelector', 'rulerControl'], zoom: 15 };  //44.952116, 34.102411
+        let _stateConfig = { center: [44.914436, 34.085001], controls: ['zoomControl', 'typeSelector', 'rulerControl'], zoom: 15 };
         let _optionsConfig = { suppressMapOpenBlock: true, searchControlProvider: 'yandex#search' };
 
-        let _ymap = null;
+        let _maps = ymaps;
+        let _map = null;
         let _draggblePlacemark = null;
         let _contextMenu = null;
         let _edittablePolyline = null;
         let _objectCollection = null;
         let _objectCluster = null;
 
-        this.getMap = () => { return _ymap; };
+        this.getMap = () => { return _map; };
         this.getContextMenu = () => { return _contextMenu; };
         this.getEditablePolyline = () => { return _edittablePolyline; };
-        this.getObjectCollection = () => { return _objectCollection; }
-        this.getObjectCluster = () => { return _objectCluster; }
+        this.getObjectCollection = () => { return _objectCollection; };
+        this.getObjectCluster = () => { return _objectCluster; };
 
         this.load = async () => {
             return new Promise(async (resolve, reject) => {
@@ -25,21 +26,21 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         };
 
         this.attachTo = target => {
-            _ymap = new ymaps.Map(target, _stateConfig, _optionsConfig);
-        }
+            _map = new ymaps.Map(target, _stateConfig, _optionsConfig);
+        };
 
         this.showBounds = () => {
-            let bounds = _ymap.geoObjects.getBounds();
-            bounds && _ymap.setBounds(bounds, { checkZoomRange: true });
-        }
+            let bounds = _map.geoObjects.getBounds();
+            bounds && _map.setBounds(bounds, { checkZoomRange: true });
+        };
 
         this.addLayout = (name, layout) => {
             ymaps.layout.storage.add(`custom#${name}`, ymaps.templateLayoutFactory.createClass(layout));
-        }
+        };
 
         this.getLayout = name => {
             return ymaps.layout.storage.get(`custom#${name}`);
-        }
+        };
 
         this.createObject = opts => {
             let properties = content => {
@@ -77,11 +78,10 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                 },
                 properties: properties(opts.content),
                 options: options()
-            }
+            };
         };
 
         this.createObjectManager = opts => {
-
             function ObjectManager () {
                 let _objectManager = null;
 
@@ -139,7 +139,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                     strokeColor: 'F4425F',
                     strokeOpacity: 1,
                     strokeWidth: 4,
-                    balloonContentLayout: options.balloonContentLayout || null,
+                    balloonContentLayout: options.balloonContentLayout || null
                 };
 
                 for (let k in data) if (!data[k]) delete data[k];
@@ -173,7 +173,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                     iconColor: '#F4425F',
                     preset: 'islands#glyphCircleIcon',
                     iconCaptionMaxWidth: '150',
-                    balloonContentLayout: options.balloonContentLayout || null,
+                    balloonContentLayout: options.balloonContentLayout || null
                 };
 
                 for (let k in data) if (!data[k]) delete data[k];
@@ -185,19 +185,19 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         };
 
         this.removeGeoObject = object => {
-            _ymap.geoObjects.remove(object);
+            _map.geoObjects.remove(object);
         };
 
         this.addGeoObject = object => {
-            return _ymap.geoObjects.add(object);
+            return _map.geoObjects.add(object);
         };
 
         this.getGeoObject = index => {
-            return index ? _ymap.geoObjects.get(index) : _ymap.geoObjects;
+            return index ? _map.geoObjects.get(index) : _map.geoObjects;
         };
 
         this.getGeoObjectIndex = object => {
-            return _ymap.geoObjects.indexOf(object);
+            return _map.geoObjects.indexOf(object);
         };
 
         this.findGeoObjectIndex = object => {
@@ -208,16 +208,16 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                 index: null
             };
 
-            index = _ymap.geoObjects.indexOf(object);
+            index = _map.geoObjects.indexOf(object);
             if (index !== -1) {
                 isFound.status = true;
-                isFound.parent = _ymap.geoObjects;
+                isFound.parent = _map.geoObjects;
                 isFound.index = index;
             } else {
-                let objectCount = _ymap.geoObjects.getLength();
+                let objectCount = _map.geoObjects.getLength();
                 for (let i = 0; i < objectCount; i++) {
-                    let geoObject = _ymap.geoObjects.get(i);
-                    if (geoObject.options.getName() === _geoObjectNamesList.CLUSTERER) {
+                    let geoObject = _map.geoObjects.get(i);
+                    if (geoObject.options.getName() === 'clusterer') {
                         index = geoObject.getGeoObjects().indexOf(object);
                         if (index !== -1) {
                             isFound.status = true;
@@ -233,8 +233,11 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         };
 
         this.findGeoObjectByName = opts => {
-            let objectCount = _ymap.geoObjects.getLength();
-            for (let i = 0; i < objectCount; i++) { if (_ymap.geoObjects.get(i).options.getName() === opts.name) { return geoObject; } }
+            let objectCount = _map.geoObjects.getLength();
+            for (let i = 0; i < objectCount; i++) {
+                let geoObject = _map.geoObjects.get(i);
+                if (geoObject.options.getName() === opts.name) { return geoObject; }
+            }
         };
 
         this.findGeoObjectByExternalProperty = opts => {
@@ -243,12 +246,12 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                 parent: null,
                 child: null
             };
-            let objectValue
-            let objectCount = _ymap.geoObjects.getLength();
+            let objectValue;
+            let objectCount = _map.geoObjects.getLength();
             for (let i = 0; i < objectCount; i++) {
-                let geoObject = _ymap.geoObjects.get(i);
+                let geoObject = _map.geoObjects.get(i);
 
-                if (geoObject.options.getName() === _geoObjectNamesList.CLUSTERER) {
+                if (geoObject.options.getName() === 'clusterer') {
                     let objectCount = geoObject.getGeoObjects().length;
                     for (let i = 0; i < objectCount; i++) {
                         let clusteredGeoObject = geoObject.getGeoObjects()[i];
@@ -264,7 +267,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                     try { objectValue = geoObject.properties.get('external')[opts.property]; } catch (e) { continue; }
                     if (objectValue === opts.value) {
                         isFound.status = true;
-                        isFound.parent = _ymap.geoObjects;
+                        isFound.parent = _map.geoObjects;
                         isFound.child = geoObject;
                         break;
                     }
@@ -275,7 +278,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
         };
 
         this.setGeoObjectEventHandler = (event, cb, context = null, args = null) => {
-            _ymap.geoObjects.events.add(event, context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
+            _map.geoObjects.events.add(event, context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
         };
 
         this.initializeObjectCluster = opts => {
@@ -305,7 +308,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
 
             _objectCluster = new ymaps.Clusterer(options());
 
-            _ymap.geoObjects.add(_objectCluster);
+            _map.geoObjects.add(_objectCluster);
         };
 
         this.initializeObjectCollection = opts => {
@@ -314,67 +317,81 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
             };
             _objectCollection = new ymaps.Collection(options());
 
-            _ymap.geoObjects.add(_objectCollection);
+            _map.geoObjects.add(_objectCollection);
         };
 
-        // FIX 
-        this.initializeDraggablePlacemark = opts => {
-            function Mark (o) {
-                let mark = null;
-                let loca = { ciry: '', street: '', house: '', latitude: null, longitude: null }; // localities
-                let prop = { iconCaption: 'Поиск адреса...', iconContent: '', external: o.properties.external };
-                let opts = { iconColor: '#F4425F', preset: 'islands#redCircleDotIconWithCaption', draggable: true }; //  blueStretchyIcon DotIconWithCaption
+        this.registerDraggablePlacemark = opts => {
+            let map = _map;
+            let ymaps = _maps;
 
-                let hint = function () { return { iconCaption: 'Зафиксировать' /* 'Новая точка', balloonContent: balloonContent() */ }; };
-                let onGeocoded = function (e) { let geo = e.geoObjects.get(0); loca.city = geo.getLocalities()[0]; loca.street = geo.getThoroughfare() || geo.getPremise() || ''; this.get().properties.set(hint()); };
-                let balloonContent = function () { return `<div class='draggable-placemark wrapper'><div class='name'><label>Адрес</label><input type='text' value='${loca.city}, ${loca.street}'></div><div class='coordinates hidden'><label>Координаты</label><input type='text' value='${loca.longitude},${loca.latitude}'></div></div>`; };
+            function Placemark (o) {
+                let _mark = null;
+                let _properties = { iconCaption: 'Поиск адреса...', iconContent: '', external: o.properties };
+                let _options = { iconColor: '#FFE100', preset: 'islands#redCircleDotIconWithCaption', draggable: true }; // blueStretchyIcon DotIconWithCaption
+                let onDragged = function (e) { this.move(e.originalEvent.target.geometry.getCoordinates()); };
 
-                this.init = function (coords) { loca.longitude = coords[0]; loca.latitude = coords[1]; return this; };
-                this.create = function () { mark = new ymaps.Placemark([loca.longitude, loca.latitude], prop, opts); return this; };
-                this.get = function () { return mark; };
-                this.move = function () { this.get().geometry.setCoordinates([loca.longitude, loca.latitude]); this.find(); };
-                this.find = function () { this.get().properties.set(prop); ymaps.geocode([loca.longitude, loca.latitude]).then(onGeocoded.bind(this)); };
-                this.onDragged = function (cb) { this.get().events.add('dragend', cb.bind(this)); return this; };
-                this.onClicked = function (cb) { this.get().events.add('click', cb.bind(this)); return this; };
+                function initialize () {
+                    if (_mark) return;
+                    _mark = new ymaps.Placemark([], _properties, _options);
+                    _mark.events.add('dragend', onDragged.bind(this));
+                    o.onClicked && _mark.events.add('click', o.onClicked.bind(this));
+                    map.geoObjects.add(_mark);
+                };
+
+                this.move = function (coords) {
+                    initialize.bind(this)();
+                    _mark.properties.set(_properties);
+                    _mark.geometry.setCoordinates([coords[0], coords[1]]);
+                    ymaps.geocode([coords[0], coords[1]]).then(r => {
+                        let geo = r.geoObjects.get(0);
+                        let city = geo.getLocalities()[0];
+                        let street = geo.getThoroughfare() || geo.getPremise() || '';
+                        let hintContent = street ? `${city}, ${street}` : geo.geometry.getCoordinates();
+                        _mark.properties.set({ hintContent: hintContent, iconCaption: '' });
+                    }, () => { });
+                };
 
                 return this;
             };
-
-            _draggblePlacemark = new Mark(opts);
+            _draggblePlacemark = new Placemark(opts);
         };
 
-        this.initializeEditablePolyline = opts => {
-            function Polyline () {
+        this.registerEditablePolyline = opts => {
+            let map = _map;
+            let ymaps = _maps;
+
+            function Polyline (o) {
                 let _polyline = null;
-                let _placemarks = {};
+                let _points = {};
 
                 function getCoordinates () {
                     let coordinates = [];
-                    for (let k in _placemarks) { coordinates.push(_placemarks[k].geometry.getCoordinates()); }
+                    for (let p in _points) { coordinates.push(_points[p].geometry.getCoordinates()); }
                     return coordinates;
                 }
 
-                this.getPolyline = () => { return _polyline; };
-                this.getCoordinates = () => { return getCoordinates(); };
-                this.addPlacemark = opts => { _placemarks[opts.id] = opts.placemark; return this; };
-                this.delPlacemark = opts => { delete _placemarks[opts.id]; return this; };
-                this.getPlacemarkAll = () => { return _placemarks };
-                this.reset = () => { _placemarks = {}; _polyline.geometry.setCoordinates([]); return this; };
+                this.point = {
+                    each: cb => { for (let p in _points) { cb(_points[p]); } },
+                    add: p => { _points[p.id] = p.placemark; return this; },
+                    del: p => { delete _points[p.id]; return this; },
+                    all: () => getCoordinates()
+                };
 
-                this.render = ymap => {
-                    if (Object.keys(_placemarks).length === 0) return;
+                this.reset = () => { _points = {}; _polyline.geometry.setCoordinates([]); return this; };
+
+                this.render = () => {
+                    if (Object.keys(_points).length === 0) return;
                     if (!_polyline) {
                         _polyline = new ymaps.Polyline(getCoordinates(),
                             {
-                                external: opts.properties.external
-                            },
-                            {
+                                external: o.properties
+                            }, {
                                 strokeColor: ['FFF', 'F4425F'],
-                                strokeOpacity: [.85, 1],
-                                strokeStyle: ['1 0', '1 2'],  // Первая цифра - длина штриха. Вторая - длина разрыва.
+                                strokeOpacity: [0.85, 1],
+                                strokeStyle: ['1 0', '1 2'], // Первая цифра - длина штриха. Вторая - длина разрыва.
                                 strokeWidth: [6, 4]
                             });
-                        ymap.geoObjects.add(_polyline);
+                        map.geoObjects.add(_polyline);
                     }
 
                     _polyline.geometry.setCoordinates(getCoordinates());
@@ -385,7 +402,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                 return this;
             }
 
-            _edittablePolyline = new Polyline();
+            _edittablePolyline = new Polyline(opts);
         };
 
         this.initializeCustomControls = opts => {
@@ -407,7 +424,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
 
             button.events.add('press', opts.cb);
 
-            this._ymap.controls.add(button);
+            this._map.controls.add(button);
         };
 
         this.initializeContextMenu = opts => {
@@ -421,7 +438,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                     let menuContent =
                         `<div id='contextmenu-${_id}' class='contextmenu'>
                             <ul id='listmenu'>
-                                ${_listMenu ? _listMenu : ''}
+                                ${_listMenu || ''}
                             </ul>
                         </div>`.replace(/\s\s+/gmi, '');
                     let template = document.createElement('template');
@@ -457,7 +474,7 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
                     _contextMenu.style.top = `${coords[1]}px`;
 
                     return this;
-                }
+                };
 
                 this.render = () => {
                     if (_contextMenu) return this;
@@ -507,22 +524,11 @@ define(['ymaps', 'utils/index'], function (ymaps, utils) {
 
         this.initializeMapGlobalEvents = opts => {
             function closeContextMenu (e) { _contextMenu.hide(e); _contextMenu.close(e); }
+            function graggablePlacemark (e) { _draggblePlacemark.move(e.get('coords')); }
 
-            function graggablePlacemark (e) {
-                _draggblePlacemark.init(e.get('coords'));
-                if (_draggblePlacemark.get()) {
-                    _draggblePlacemark.move();
-                } else {
-                    _draggblePlacemark.create();
-                    _draggblePlacemark.onDragged(function (e) { this.init(e.originalEvent.target.geometry.getCoordinates()).find(); });
-                    _draggblePlacemark.find();
-                    _ymap.geoObjects.add(_draggblePlacemark.get());
-                }
-            }
-
-            _ymap.events.add('click', graggablePlacemark.bind(this));
-            _ymap.events.add('click', closeContextMenu.bind(this));
-            _ymap.events.add('mousedown', closeContextMenu.bind(this));
+            _map.events.add('click', graggablePlacemark.bind(this));
+            _map.events.add('click', closeContextMenu.bind(this));
+            _map.events.add('mousedown', closeContextMenu.bind(this));
         };
 
         return this;

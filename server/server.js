@@ -1,5 +1,5 @@
 var app = require.main.require('../app');
-var debug = require('debug')('dev:server');
+// var debug = require('debug')('dev:server');
 var http = require('http');
 
 var port = normalizePort(process.env.PORT || '8080'); // TODO : env

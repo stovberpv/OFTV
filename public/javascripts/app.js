@@ -8,7 +8,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
         DEBUG :
     */
     function App () {
-        let _config = config;
+        // let _config = config;
         let _socket = null;
         let _ymap = null;
         let _node = node;
@@ -30,9 +30,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                         clusterCaption: node.name.get(),
                         external: node.toPrimitive()
                     },
-                    options: {
-                        balloonContentLayout: _ymap.getLayout('node')
-                    }
+                    options: { balloonContentLayout: _ymap.getLayout('node') }
                 });
             }
 
@@ -43,26 +41,24 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                         hintContent: route.routeDescription.get() || route.cableDescription.get(),
                         external: route.toPrimitive()
                     },
-                    options: {
-                        balloonContentLayout: _ymap.getLayout('route')
-                    }
+                    options: { balloonContentLayout: _ymap.getLayout('route') }
                 });
             }
 
             return (networkResourceType, networkResourceObject) => {
-                ('node' === networkResourceType) && (() => {
+                (networkResourceType === 'node') && (() => {
                     let clusterer = _ymap.getObjectCluster();
                     let mapObject = placemark(new Node(networkResourceObject));
                     clusterer.getGeoObjects().forEach(o => (o.properties.get('external').guid === mapObject.properties.get('external').guid) && clusterer.remove(o));
                     !mapObject.properties.get('external').isDeprecated && clusterer.add(mapObject);
                 })();
-                ('route' === networkResourceType) && (() => {
+                (networkResourceType === 'route') && (() => {
                     let collection = _ymap.getObjectCollection();
                     let mapObject = polyline(new Route(networkResourceObject));
                     collection.each(o => (o.properties.get('external').guid === mapObject.properties.get('external').guid) && collection.remove(o));
                     !mapObject.properties.get('external').isDeprecated && collection.add(mapObject);
                 })();
-            }
+            };
         })();
 
         // DEBUG _contextMenuHandler после реализации серверной части
@@ -76,39 +72,40 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
 
             function createList (prop) {
                 return [
-                    ('node' === prop.type && !prop.routePoint) ? { id: 'check', text: 'Трасса: добавить' } : null,
-                    ('node' === prop.type && prop.routePoint) ? { id: 'uncheck', text: 'Трасса: исключить' } : null,
-                    ('node' === prop.type && prop.routePoint) ? { id: 'complete', text: 'Трасса: завершить' } : null,
-                    (('node' === prop.type || 'route' === prop.type) && !prop.editable) ? { id: 'update', text: 'Редактировать описание' } : null,
-                    ('node' === prop.type || 'route' === prop.type) ? { id: 'remove', text: 'Удалить' } : null,
+                    (prop.type === 'node' && !prop.routePoint) && { id: 'check', text: 'Трасса: добавить' },
+                    (prop.type === 'node' && prop.routePoint) && { id: 'uncheck', text: 'Трасса: исключить' },
+                    (prop.type === 'node' && prop.routePoint) && { id: 'complete', text: 'Трасса: завершить' },
+                    ((prop.type === 'node' || prop.type === 'route') && !prop.editable) && { id: 'update', text: 'Редактировать описание' },
+                    (prop.type === 'node' || prop.type === 'route') && { id: 'remove', text: 'Удалить' },
+                    (prop.type === 'node blueprint') && { id: 'fix', text: 'Зафиксировать' }
                 ];
             }
 
             return async e => {
-                if ('cluster' === e.get('target').options.getName()) return;
+                if (e.get('target').options.getName() === 'cluster') return;
                 let target = e.get('target');
                 let extProp = target.properties.get('external');
                 let list = createList({ type: extProp.type, routePoint: extProp.routePoint, editable: extProp.editable });
                 let clicked = await ymap.getContextMenu().setList(list).render().setPosition(e.get('pagePixels')).show().onClick('listmenu');
                 const id = clicked.target.id;
-                if ('check' === id) {
+                if (id === 'check') {
                     extProp.routePoint = true;
-                    ymap.getEditablePolyline().addPlacemark({ id: extProp.guid, placemark: target }).render(ymap.getMap());
-                } else if ('uncheck' === id) {
+                    ymap.getEditablePolyline().point.add({ id: extProp.guid, placemark: target }).render();
+                } else if (id === 'uncheck') {
                     delete extProp.routePoint;
-                    ymap.getEditablePolyline().delPlacemark({ id: extProp.guid }).render(ymap.getMap());
-                } else if ('complete' === id) {
+                    ymap.getEditablePolyline().point.del({ id: extProp.guid }).render();
+                } else if (id === 'complete') {
                     let ep = ymap.getEditablePolyline();
-                    let placemarks = ep.getPlacemarkAll();
-                    for (let p in placemarks) { delete placemarks[p].properties.get('external').routePoint }
-                    let coordinatePath = ep.getCoordinates().reduce((p, c) => { return `${p} ${c}`; });
-                    socket.getRoutes().emitNetworkResourcesUpdate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
+                    let coordinatePath = ep.point.all();
+                    ep.point.each(p => delete p.properties.get('external').routePoint);
                     ep.reset();
-                } else if ('update' === id) {
+                    socket.getRoutes().emitNetworkResourcesAdd(new Route({ coordinatePath: coordinatePath }).toPrimitive());
+                } else if (id === 'update') {
                     extProp.editable = true;
-                    if ('node' === extProp.type) target.options.set('iconColor', '#FFE100'); else if ('route' === extProp.type) target.options.set('strokeColor', '#FFE100');
+                    if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
+                    else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
                     target.balloon.open();
-                } else if ('remove' === id) {
+                } else if (id === 'remove') {
                     let popup = new Popup()
                         .setTitle('Удалить соединение?')
                         .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
@@ -117,6 +114,21 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                         .setEventListener('no', () => popup.close())
                         .show();
                     utils.setDraggable(popup.getDOM(), '.title');
+                } else if (id === 'fix') {
+                    let prompt = new Promise((resolve, reject) => {
+                        let popup = new Popup()
+                            .setTitle('Зафиксировать как узел?')
+                            .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
+                            .render()
+                            .setEventListener('yes', () => { popup.close(); resolve(); })
+                            .setEventListener('no', () => { popup.close(); reject(); })
+                            .show();
+                        utils.setDraggable(popup.getDOM(), '.title');
+                    });
+                    prompt.then(() => {
+                        // TODO remove placemark
+                        socket.getRoutes().emitNetworkResourcesAdd(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
+                    }, () => {});
                 }
             };
         };
@@ -131,13 +143,13 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                 let extProp = o.properties.get('external');
                 if (!['node', 'route'].includes(extProp.type)) return;
                 let fetch = new Promise(resolve => {
-                    socket.getRoutes().onNetworkResources(r => resolve(r))
+                    socket.getRoutes().onNetworkResources(r => resolve(r));
                     socket.getRoutes().emitNetworkResources({ type: extProp.type, guid: extProp.guid });
                 });
                 fetch.then(result => {
-                    let data = ('node' === extProp.type) ? Node(result) : (('route' === extProp.type) && Route(result));
+                    let data = (extProp.type === 'node') ? Node(result) : ((extProp.type === 'route') && Route(result));
                     Object.assign(extProp, data.toPrimitive());
-                }, () => {});
+                }, () => { });
             }
 
             return e => (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => getNetworkResources(o));
@@ -157,7 +169,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                         .setTitle('Сохранить изменения?')
                         .setButtons([{ title: 'Сохранить', id: 'save' }, { title: 'Отменить', id: 'close' }])
                         .render()
-                        .setEventListener('save', () => { popup.close(); resolve() })
+                        .setEventListener('save', () => { popup.close(); resolve(); })
                         .setEventListener('close', () => { popup.close(); reject(); })
                         .show();
                     utils.setDraggable(popup.getDOM(), '.title');
@@ -168,34 +180,19 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                 if (e.get('cluster')) return;
                 let target = e.get('target');
                 let extProp = target.properties.get('external');
-
-                switch (extProp.type) {
-                    case 'node':
-                        if (extProp.editable) {
-                            prompt().then(() => {
-                                socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
-                                extProp.editable = false;
-                                target.options.set('iconColor', '#F4425F');
-                            }, () => {});
-                        }
-                        return;
-
-                    case 'route':
-                        if (extProp.editable) {
-                            prompt().then(() => {
-                                socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
-                                extProp.editable = false;
-                                target.options.set('strokeColor', '#F4425F');
-                            }, () => {});
-                        }
-                        return;
-
-                    case 'blueprint':
-                        // TODO :
-                        break;
-
-                    default:
-                        break;
+                if (!extProp.editable) return;
+                if (extProp.type === 'node') {
+                    prompt().then(() => {
+                        socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
+                        extProp.editable = false;
+                        target.options.set('iconColor', '#F4425F');
+                    }, () => { });
+                } else if (extProp.type === 'route') {
+                    prompt().then(() => {
+                        socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
+                        extProp.editable = false;
+                        target.options.set('strokeColor', '#F4425F');
+                    }, () => { });
                 }
             };
         };
@@ -221,19 +218,18 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
             await (() => { // initialize ymap
                 _ymap = new ymap.Ymap();
                 return new Promise(async (resolve, reject) => {
-                    try { await _ymap.load() } catch (e) { reject(e); }
+                    try { await _ymap.load(); } catch (e) { reject(e); }
                     _ymap.attachTo('map');
                     _ymap.addLayout('route', _route.view.render());
                     _ymap.addLayout('node', _node.view.render());
                     _ymap.initializeObjectCluster();
                     _ymap.initializeObjectCollection();
-                    // FIX :
-                    _ymap.initializeDraggablePlacemark({ properties: { external: { type: 'blueprint', editable: true } } });
-                    _ymap.initializeEditablePolyline({ properties: { external: { type: 'blueprint' } } });
+                    _ymap.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
+                    _ymap.registerEditablePolyline({ properties: { type: 'route blueprint' } });
 
                     _ymap.initializeContextMenu();
                     _ymap.initializeMapGlobalEvents();
-                    _ymap.getObjectCluster()
+                    _ymap.getObjectCluster();
                     _ymap.setGeoObjectEventHandler('contextmenu', _contextMenuHandler());
                     _ymap.setGeoObjectEventHandler('balloonopen', _balloonOpenHandler());
                     _ymap.setGeoObjectEventHandler('balloonclose', _balloonCloseHandler());
@@ -252,7 +248,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                     { guid: 'N20000000000000000000000000000N2', name: 'node-2', description: '', coordinates: [44.908864, 34.074770] },
                     { guid: 'N30000000000000000000000000000N3', name: 'node-3', description: '', coordinates: [44.911213, 34.074015] },
                     { guid: 'N40000000000000000000000000000N4', name: 'node-4', description: '', coordinates: [44.909106, 34.080851] },
-                    { guid: 'N50000000000000000000000000000N5', name: 'node-5', description: '', coordinates: [44.916109, 34.087795] },
+                    { guid: 'N50000000000000000000000000000N5', name: 'node-5', description: '', coordinates: [44.916109, 34.087795] }
                 ];
                 nodes.forEach(node => _transposeDataOnMap('node', node));
                 let routes = [
@@ -261,7 +257,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                     { guid: 'R30000000000000000000000000000R3', coordinatePath: [[44.908864, 34.074770], [44.909106, 34.080851]], routeDescription: 'route-3', cableDescription: 'ceble-3', cablelabelA: '3', cablelabelB: '4', cablelength: '2', cableCores: '3', cableType: '' },
                     { guid: 'R40000000000000000000000000000R4', coordinatePath: [[44.909106, 34.080851], [44.916109, 34.087795]], routeDescription: 'route-4', cableDescription: 'ceble-4', cablelabelA: '4', cablelabelB: '5', cablelength: '2', cableCores: '4', cableType: '' },
                     { guid: 'R50000000000000000000000000000R5', coordinatePath: [[44.909106, 34.080851], [44.909866, 34.076351]], routeDescription: 'route-5', cableDescription: 'ceble-5', cablelabelA: '5', cablelabelB: '6', cablelength: '2', cableCores: '5', cableType: '' }
-                ]
+                ];
                 routes.forEach(route => _transposeDataOnMap('route', route));
 
                 _transposeDataOnMap('node', { guid: 'N10000000000000000000000000000N1', isDeprecated: true, name: 'node-1-1', description: '', coordinates: [44.909866, 34.076351] });
@@ -272,7 +268,6 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
             (() => { // post config
                 _ymap.showBounds();
             })();
-
         };
 
         return this;

@@ -11,13 +11,13 @@ define([], function () {
             description: obj.description ? obj.description : null
         };
 
-        this.giud = { set: val => node.guid = val, get: () => { return node.guid; } };
-        this.isDeprecated = { set: val => node.isDeprecated = val, get: () => { return node.isDeprecated; } };
-        this.coordinates = { set: val => node.coordinates = val, get: () => { return node.coordinates; } };
-        this.name = { set: val => node.name = val, get: () => { return node.name; } };
-        this.description = { set: val => node.description = val, get: () => { return node.description; } };
+        this.giud = { set: val => { node.guid = val; }, get: () => { return node.guid; } };
+        this.isDeprecated = { set: val => { node.isDeprecated = val; }, get: () => { return node.isDeprecated; } };
+        this.coordinates = { set: val => { node.coordinates = val; }, get: () => { return node.coordinates; } };
+        this.name = { set: val => { node.name = val; }, get: () => { return node.name; } };
+        this.description = { set: val => { node.description = val; }, get: () => { return node.description; } };
 
-        this.toPrimitive = () => { return node; }
+        this.toPrimitive = () => { return node; };
 
         return this;
     }

@@ -1,21 +1,36 @@
-define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index', 'popup/index'], function (config, socket, ymap, node, route, utils, popup) {
+define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index', 'popup/index'], function (socket, ymap, node, route, utils, popup) {
     'use strict';
 
     /*
-        TODO : Две точки с одинаковыми координатами - придумать реализацию, не сохранять или сохранять но как тогда удалять?
+        TODO :
+                1.      Две точки с одинаковыми координатами - придумать реализацию, не сохранять или сохранять но как тогда удалять?
+                2.      При построении маршрута трассы, если последняя точка != начальная - позволять начальную точку добавить в маршрут
+                3. +    _socket.routes.emitNetworkResources Обработать ресурсы
+                4.      _socket.routes запрос, обновление, удаление ресурсов
+                5.      удалять draggableplacemark после сохранения
+                6.      _socket.routes.onNetworkResourcesUpdated();
+                7.      _socket.routes.onNetworkResourcesRemoved();
         FIX :
+                1.      ymaps не отображается searchControlProvider
+                2. +    _ymap.showBounds(); вызывать после загрузки всех ресурсов по сокету
+                3.
         NOTE :
+                1.
+                2.
+                3.
         DEBUG :
+                1.      _contextMenuHandler после реализации серверной части
+                2. +    _balloonOpenHandler после реализации серверной части
+                3.      _balloonCloseHandler после реализации серверной части
     */
     function App () {
-        // let _config = config;
+        let _eventBus = null;
         let _socket = null;
         let _ymap = null;
         let _node = node;
         let _route = route;
         let _utils = utils;
         let _popup = popup;
-        let _eventBus = null;
 
         let _transposeDataOnMap = (() => {
             let Node = _node.Node;
@@ -61,7 +76,6 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
             };
         })();
 
-        // DEBUG _contextMenuHandler после реализации серверной части
         let _contextMenuHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
@@ -99,7 +113,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                     let coordinatePath = ep.point.all();
                     ep.point.each(p => delete p.properties.get('external').routePoint);
                     ep.reset();
-                    socket.getRoutes().emitNetworkResourcesAdd(new Route({ coordinatePath: coordinatePath }).toPrimitive());
+                    socket.routes.emitNetworkResourcesCreate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
                 } else if (id === 'update') {
                     extProp.editable = true;
                     if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
@@ -110,7 +124,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                         .setTitle('Удалить соединение?')
                         .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
                         .render()
-                        .setEventListener('yes', () => { popup.close(); socket.getRoutes().emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); })
+                        .setEventListener('yes', () => { popup.close(); socket.routes.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); })
                         .setEventListener('no', () => popup.close())
                         .show();
                     utils.setDraggable(popup.getDOM(), '.title');
@@ -126,14 +140,12 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                         utils.setDraggable(popup.getDOM(), '.title');
                     });
                     prompt.then(() => {
-                        // TODO remove placemark
-                        socket.getRoutes().emitNetworkResourcesAdd(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
-                    }, () => {});
+                        socket.routes.emitNetworkResourcesCreate(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
+                    }, () => { });
                 }
             };
         };
 
-        // DEBUG _balloonOpenHandler после реализации серверной части
         let _balloonOpenHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
@@ -142,35 +154,30 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
             async function getNetworkResources (o) {
                 let extProp = o.properties.get('external');
                 if (!['node', 'route'].includes(extProp.type)) return;
-                let fetch = new Promise(resolve => {
-                    socket.getRoutes().onNetworkResources(r => resolve(r));
-                    socket.getRoutes().emitNetworkResources({ type: extProp.type, guid: extProp.guid });
-                });
-                fetch.then(result => {
-                    let data = (extProp.type === 'node') ? Node(result) : ((extProp.type === 'route') && Route(result));
+                socket.getSocket().emit('network resource read', { type: extProp.type, guid: extProp.guid }, r => {
+                    let data = (extProp.type === 'node') ? new Node(r) : ((extProp.type === 'route') && new Route(r));
                     Object.assign(extProp, data.toPrimitive());
-                }, () => { });
+                });
             }
 
             return e => (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => getNetworkResources(o));
         };
 
-        // DEBUG _balloonCloseHandler после реализации серверной части
         let _balloonCloseHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
             let Popup = _popup.Popup;
             let utils = _utils.utils;
-            let socket = _socket.getRoutes();
+            let socket = _socket.routes;
 
             function prompt () {
                 return new Promise((resolve, reject) => {
                     let popup = new Popup()
                         .setTitle('Сохранить изменения?')
-                        .setButtons([{ title: 'Сохранить', id: 'save' }, { title: 'Отменить', id: 'close' }])
+                        .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
                         .render()
-                        .setEventListener('save', () => { popup.close(); resolve(); })
-                        .setEventListener('close', () => { popup.close(); reject(); })
+                        .setEventListener('yes', () => { popup.close(); resolve(); })
+                        .setEventListener('no', () => { popup.close(); reject(); })
                         .show();
                     utils.setDraggable(popup.getDOM(), '.title');
                 });
@@ -181,19 +188,17 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                 let target = e.get('target');
                 let extProp = target.properties.get('external');
                 if (!extProp.editable) return;
-                if (extProp.type === 'node') {
-                    prompt().then(() => {
+                prompt().then(() => {
+                    if (extProp.type === 'node') {
                         socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
                         extProp.editable = false;
                         target.options.set('iconColor', '#F4425F');
-                    }, () => { });
-                } else if (extProp.type === 'route') {
-                    prompt().then(() => {
+                    } else if (extProp.type === 'route') {
                         socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
                         extProp.editable = false;
                         target.options.set('strokeColor', '#F4425F');
-                    }, () => { });
-                }
+                    }
+                }, () => { });
             };
         };
 
@@ -207,12 +212,7 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                 _socket = new socket.Socket();
                 _socket.connect();
                 _socket.initializeRoutes();
-                _socket.getRoutes().onConnect(() => console.log('Established socket connection with a server'));
-                /* TODO _socket.getRoutes() запрос, обновление, удаление ресурсов
-                _socket.getRoutes().onNetworkResources();
-                _socket.getRoutes().onNetworkResourcesUpdated();
-                _socket.getRoutes().onNetworkResourcesRemoved();
-                */
+                _socket.routes.onConnect(() => console.log('Established socket connection with a server'));
             })();
 
             await (() => { // initialize ymap
@@ -226,7 +226,6 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
                     _ymap.initializeObjectCollection();
                     _ymap.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
                     _ymap.registerEditablePolyline({ properties: { type: 'route blueprint' } });
-
                     _ymap.initializeContextMenu();
                     _ymap.initializeMapGlobalEvents();
                     _ymap.getObjectCluster();
@@ -239,34 +238,15 @@ define(['config/index', 'socket/index', 'ymap/index', 'node/index', 'route/index
             })();
 
             (() => { // data processing
-                // TODO _socket.getRoutes().emitNetworkResources Обработать ресурсы
-                _socket.getRoutes().emitNetworkResources();
-
-                // test run
-                let nodes = [
-                    { guid: 'N10000000000000000000000000000N1', name: 'node-1', description: '', coordinates: [44.909866, 34.076351] },
-                    { guid: 'N20000000000000000000000000000N2', name: 'node-2', description: '', coordinates: [44.908864, 34.074770] },
-                    { guid: 'N30000000000000000000000000000N3', name: 'node-3', description: '', coordinates: [44.911213, 34.074015] },
-                    { guid: 'N40000000000000000000000000000N4', name: 'node-4', description: '', coordinates: [44.909106, 34.080851] },
-                    { guid: 'N50000000000000000000000000000N5', name: 'node-5', description: '', coordinates: [44.916109, 34.087795] }
-                ];
-                nodes.forEach(node => _transposeDataOnMap('node', node));
-                let routes = [
-                    { guid: 'R10000000000000000000000000000R1', coordinatePath: [[44.909866, 34.076351], [44.916109, 34.087795]], routeDescription: 'route-1', cableDescription: 'ceble-1', cablelabelA: '1', cablelabelB: '2', cablelength: '2', cableCores: '1', cableType: '' },
-                    { guid: 'R20000000000000000000000000000R2', coordinatePath: [[44.908864, 34.074770], [44.911213, 34.074015]], routeDescription: 'route-2', cableDescription: 'ceble-2', cablelabelA: '2', cablelabelB: '3', cablelength: '2', cableCores: '2', cableType: '' },
-                    { guid: 'R30000000000000000000000000000R3', coordinatePath: [[44.908864, 34.074770], [44.909106, 34.080851]], routeDescription: 'route-3', cableDescription: 'ceble-3', cablelabelA: '3', cablelabelB: '4', cablelength: '2', cableCores: '3', cableType: '' },
-                    { guid: 'R40000000000000000000000000000R4', coordinatePath: [[44.909106, 34.080851], [44.916109, 34.087795]], routeDescription: 'route-4', cableDescription: 'ceble-4', cablelabelA: '4', cablelabelB: '5', cablelength: '2', cableCores: '4', cableType: '' },
-                    { guid: 'R50000000000000000000000000000R5', coordinatePath: [[44.909106, 34.080851], [44.909866, 34.076351]], routeDescription: 'route-5', cableDescription: 'ceble-5', cablelabelA: '5', cablelabelB: '6', cablelength: '2', cableCores: '5', cableType: '' }
-                ];
-                routes.forEach(route => _transposeDataOnMap('route', route));
-
-                _transposeDataOnMap('node', { guid: 'N10000000000000000000000000000N1', isDeprecated: true, name: 'node-1-1', description: '', coordinates: [44.909866, 34.076351] });
-                _transposeDataOnMap('node', { guid: 'N10000000000000000000000000000N1', isDeprecated: false, name: 'node-1-2', description: '', coordinates: [44.909866, 34.076351] });
-                _transposeDataOnMap('node', { guid: 'N10000000000000000000000000000N6', isDeprecated: false, name: 'node-1-3', description: '', coordinates: [44.909866, 34.076351] });
+                _socket.routes.onNetworkResources(r => {
+                    r.data.forEach(d => _transposeDataOnMap(r.type, d));
+                    _ymap.showBounds();
+                });
+                _socket.routes.emitNetworkResources({ type: 'node' });
+                _socket.routes.emitNetworkResources({ type: 'route' });
             })();
 
             (() => { // post config
-                _ymap.showBounds();
             })();
         };
 

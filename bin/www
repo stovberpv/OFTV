@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-var { server, port } = require.main.require('../server/server');
+const { app } = require.main.require('../app')();
+const { server, port } = require.main.require('../server/server')(app);
 
+// require.main.require('../db/db')();
 require.main.require('../server/socketio')(server);
 
 server.listen(port, '0.0.0.0');

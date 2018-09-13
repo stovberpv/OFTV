@@ -30,17 +30,15 @@ define([], function () {
         // Fired upon an attempt to reconnect.
         this.onReconnectAttempt = cb => _socket.on('reconnect_attempt', cb);
 
-        //----------------------------------------------------------------------
         //
         //  Additional
         //
-        //----------------------------------------------------------------------
 
         this.onNetworkResources = (cb, context = null, args = null) => _socket.on('network resources requested', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
         this.emitNetworkResources = opts => _socket.emit('network resources request', opts);
 
-        this.onNetworkResourcesAdd = (cb, context = null, args = null) => _socket.on('network resource add', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
-        this.emitNetworkResourcesAdd = opts => _socket.emit('network resource add', opts);
+        this.onNetworkResourcesCreated = (cb, context = null, args = null) => _socket.on('network resource create', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
+        this.emitNetworkResourcesCreate = opts => _socket.emit('network resource create', opts);
 
         this.onNetworkResourcesUpdated = (cb, context = null, args = null) => _socket.on('network resource updated', context ? (args ? cb.bind(context, args) : cb.bind(context)) : (args ? cb.bind(null, args) : cb));
         this.emitNetworkResourcesUpdate = opts => _socket.emit('network resource update', opts);

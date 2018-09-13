@@ -68,6 +68,9 @@ body {
 [class^="ymaps-"][class*="balloon__layout"]{
     border-radius: 3px !important;
 }
+[class^="ymaps-"][class*="copyrights-pane"]{
+    display: none;
+}
 /* #endregion */
 
 /* #region contextmenu */

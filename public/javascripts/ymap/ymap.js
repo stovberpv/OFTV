@@ -35,7 +35,18 @@ define(['ymaps'], function (ymaps) {
         };
 
         this.addLayout = (name, layout) => {
-            ymaps.layout.storage.add(`custom#${name}`, ymaps.templateLayoutFactory.createClass(layout));
+            ymaps.layout.storage.add(`custom#${name}`,
+                ymaps.templateLayoutFactory.createClass(layout,
+                    {
+                        build: function () {
+                            this.constructor.superclass.build.call(this);
+                            let extProp = this.getData().properties.get('external');
+                            Array.from(this.getElement().querySelectorAll('input')).forEach(i => {
+                                i.addEventListener('keyup', e => { extProp[e.target.name] = e.target.value; });
+                            });
+                        }
+                    }
+                ));
         };
 
         this.getLayout = name => {
@@ -386,7 +397,7 @@ define(['ymaps'], function (ymaps) {
                             {
                                 external: o.properties
                             }, {
-                                strokeColor: ['FFF', 'F4425F'],
+                                strokeColor: ['FFF', 'FFE100'], // F4425F
                                 strokeOpacity: [0.85, 1],
                                 strokeStyle: ['1 0', '1 2'], // Первая цифра - длина штриха. Вторая - длина разрыва.
                                 strokeWidth: [6, 4]

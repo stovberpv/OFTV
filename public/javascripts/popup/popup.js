@@ -142,13 +142,17 @@ define(['utils/index'], function (utils) {
         let _xy = opts.xy || [];
 
         function layout () {
-            return `
-                <div id='contextmenu-${_id}' class='contextmenu' style='left:${_xy[0]}px; top:${_xy[1]}px;'>
-                    <ul>
-                        ${_list.reduce((p, c) => { return `${p}<li id='${c.id}'><span class='text'>${c.text}</span><span class='icon'></span></li>`; }, '')}
-                    </ul>
-                </div>
-                `.replace(/\s\s+/gmi, '');
+            let list = _list.reduce((p, c, i, a) => {
+                return `
+                    ${p}
+                    <div id='${c.id}' class='list-element'>
+                        <span class='text'>${c.text}</span>
+                        <i class='icon'></i>
+                    </div>
+                    ${i < a.length - 1 ? `<div class='divider'></div>` : ''}
+                    `;
+            }, '');
+            return `<div id='contextmenu-${_id}' class='contextmenu' style='left:${_xy[0]}px; top:${_xy[1]}px;'>${list}</div>`.replace(/\s\s+/gmi, '');
         };
 
         function setListeners () {
@@ -207,10 +211,10 @@ define(['utils/index'], function (utils) {
 
         this.awaitUserSelect = liId => {
             let self = this;
-            let target = _contextMenu.querySelector(liId ? `ul li#${liId}` : 'ul');
+            let target = liId ? _contextMenu.querySelector(`#${liId}`) : _contextMenu;
             return new Promise((resolve, reject) => {
                 if (!target) reject(new Error(`${liId} not found!`));
-                target.addEventListener('click', e => { self.close(); resolve(e.target.closest('li').id); });
+                target.addEventListener('click', e => { self.close(); resolve(e.target.closest('.list-element').id); });
             });
         };
 

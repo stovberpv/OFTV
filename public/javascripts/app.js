@@ -16,6 +16,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 1.      ymaps не отображается searchControlProvider
                 2. +    _ymap.showBounds(); вызывать после загрузки всех ресурсов по сокету
                 3.      Кнопка множественного выбора должна быть недоступна если не выбран ни один из элементов списка
+                4.      ContextMenu скрывать предыдущее
         NOTE :
                 1.
                 2.
@@ -91,10 +92,10 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 let list = [
                     (prop.type === 'node' && !prop.routePoint) && { id: 'check', text: 'Трасса: добавить' },
                     (prop.type === 'node' && prop.routePoint) && { id: 'uncheck', text: 'Трасса: исключить' },
-                    (prop.type === 'node' && prop.routePoint) && { id: 'complete', text: 'Трасса: завершить' },
+                    (prop.type === 'node' && prop.routePoint) && { id: 'complete', text: 'Трасса: зафиксировать' },
                     ((prop.type === 'node' || prop.type === 'route') && !prop.editable) && { id: 'update', text: 'Редактировать описание' },
                     (prop.type === 'node' || prop.type === 'route') && { id: 'remove', text: 'Удалить' },
-                    (prop.type === 'node blueprint') && { id: 'fix', text: 'Зафиксировать' }
+                    (prop.type === 'node blueprint') && { id: 'fix', text: 'Точка: зафиксировать' }
                 ];
                 return list.reduce((p, c) => { c && p.push(c); return p; }, []);
             }
@@ -288,7 +289,6 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     _ymap.initializeObjectCollection();
                     _ymap.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
                     _ymap.registerEditablePolyline({ properties: { type: 'route blueprint' } });
-                    // _ymap.registerContextMenu();
                     _ymap.registerMapGlobalEvents();
                     _ymap.getObjectCluster();
                     _ymap.setGeoObjectEventHandler('contextmenu', _contextMenuHandler());

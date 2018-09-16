@@ -2,19 +2,17 @@ define(['ymaps'], function (ymaps) {
     'use strict';
 
     function Ymap () {
-        let _stateConfig = { center: [44.914436, 34.085001], controls: ['zoomControl', 'typeSelector', 'rulerControl'], zoom: 15 };
+        let _stateConfig = { center: [44.914436, 34.085001], controls: ['zoomControl', 'typeSelector', 'rulerControl', 'searchControl'], zoom: 15 };
         let _optionsConfig = { suppressMapOpenBlock: true, searchControlProvider: 'yandex#search' };
 
         let _maps = ymaps;
         let _map = null;
         let _draggblePlacemark = null;
-        let _contextMenu = null;
         let _edittablePolyline = null;
         let _objectCollection = null;
         let _objectCluster = null;
 
         this.getMap = () => { return _map; };
-        this.getContextMenu = () => { return _contextMenu; };
         this.getEditablePolyline = () => { return _edittablePolyline; };
         this.getObjectCollection = () => { return _objectCollection; };
         this.getObjectCluster = () => { return _objectCluster; };
@@ -43,6 +41,9 @@ define(['ymaps'], function (ymaps) {
                             let extProp = this.getData().properties.get('external');
                             Array.from(this.getElement().querySelectorAll('input')).forEach(i => {
                                 i.addEventListener('keyup', e => { extProp[e.target.name] = e.target.value; });
+                                extProp.editable
+                                    ? i.removeAttribute('readonly')
+                                    : i.setAttributeNode(document.createAttribute('readonly'));
                             });
                         }
                     }
@@ -310,10 +311,11 @@ define(['ymaps'], function (ymaps) {
                     </div>`);
 
                 return {
+                    // gridSize: 32,
                     clusterIcons: [{ href: '', size: [30, 30], offset: [-15, -15] }],
                     clusterIconContentLayout: clusterIconContentLayout,
-                    // clusterDisableClickZoom: true,
-                    showInAlphabeticalOrder: true
+                    showInAlphabeticalOrder: true,
+                    // hasBalloon: false
                 };
             };
 
@@ -416,7 +418,7 @@ define(['ymaps'], function (ymaps) {
             _edittablePolyline = new Polyline(opts);
         };
 
-        this.initializeCustomControls = opts => {
+        this.registerCustomControls = opts => {
             let button = new ymaps.control.Button({
                 data: {
                     content: opts.data.content || '',
@@ -438,108 +440,10 @@ define(['ymaps'], function (ymaps) {
             this._map.controls.add(button);
         };
 
-        this.initializeContextMenu = opts => {
-            function ContextMenu () {
-                let _id = null;
-                let _contextMenu = null;
-                let _caller = null;
-                let _listMenu = null;
-
-                function createView () {
-                    let menuContent =
-                        `<div id='contextmenu-${_id}' class='contextmenu'>
-                            <ul id='listmenu'>
-                                ${_listMenu || ''}
-                            </ul>
-                        </div>`.replace(/\s\s+/gmi, '');
-                    let template = document.createElement('template');
-                    template.innerHTML = menuContent;
-
-                    return template.content.firstChild;
-                };
-
-                this.get = () => {
-                    return _contextMenu;
-                };
-
-                this.setList = listMenu => {
-                    let l = '';
-                    listMenu.forEach(e => e && (l += `<li id='${e.id}'>${e.text}</li>`));
-                    _listMenu = l;
-
-                    return this;
-                };
-
-                this.setCaller = target => {
-                    _caller = target;
-
-                    return this;
-                };
-
-                this.getCaller = () => {
-                    return _caller;
-                };
-
-                this.setPosition = coords => {
-                    _contextMenu.style.left = `${coords[0]}px`;
-                    _contextMenu.style.top = `${coords[1]}px`;
-
-                    return this;
-                };
-
-                this.render = () => {
-                    if (_contextMenu) return this;
-
-                    _id = Math.floor(Math.random() * 100000);
-
-                    document.body.appendChild(createView());
-                    _contextMenu = document.querySelector(`#contextmenu-${_id}`);
-
-                    return this;
-                };
-
-                this.show = () => {
-                    _contextMenu && _contextMenu.classList.add('visible');
-
-                    return this;
-                };
-
-                this.hide = e => {
-                    _contextMenu && _contextMenu.classList.remove('visible');
-
-                    return this;
-                };
-
-                this.close = e => {
-                    if (!_contextMenu) return;
-                    try { _contextMenu.parentNode.removeChild(_contextMenu); } catch (e) { console.log(e); }
-                    _contextMenu = null;
-                };
-
-                this.onClick = menuElement => {
-                    if (!_contextMenu) return;
-                    let self = this;
-
-                    let target = _contextMenu.querySelector(`#${menuElement}`);
-                    return new Promise((resolve, reject) => {
-                        if (!target) reject(new Error(`${menuElement} not found!`));
-                        target.addEventListener('click', e => { self.hide().close(); resolve(e); });
-                    });
-                };
-
-                return this;
-            }
-
-            _contextMenu = new ContextMenu();
-        };
-
-        this.initializeMapGlobalEvents = opts => {
-            function closeContextMenu (e) { _contextMenu.hide(e); _contextMenu.close(e); }
+        this.registerMapGlobalEvents = opts => {
             function graggablePlacemark (e) { _draggblePlacemark.move(e.get('coords')); }
 
             _map.events.add('click', graggablePlacemark.bind(this));
-            _map.events.add('click', closeContextMenu.bind(this));
-            _map.events.add('mousedown', closeContextMenu.bind(this));
         };
 
         return this;

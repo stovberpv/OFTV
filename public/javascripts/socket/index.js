@@ -1,7 +1,7 @@
-define(['./socket', './routes'], function (Socket, Routes) {
+define(['./helper', './routes'], function (helper, routes) {
     console.log('Socket loaded');
     return {
-        Socket: Socket,
-        Routes: Routes
+        helper: helper,
+        routes: routes
     };
 });

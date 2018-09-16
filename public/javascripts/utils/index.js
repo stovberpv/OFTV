@@ -4,5 +4,5 @@ define(['./eventbus', './geocode', './utils'], function (EventBus, geocode, util
         EventBus: EventBus,
         geocode: geocode,
         utils: utils
-    }
+    };
 });

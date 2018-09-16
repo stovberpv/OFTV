@@ -6,30 +6,33 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 1.      Две точки с одинаковыми координатами - придумать реализацию, не сохранять или сохранять но как тогда удалять?
                 2.      При построении маршрута трассы, если последняя точка != начальная - позволять начальную точку добавить в маршрут
                 3. +    _socket.routes.emitNetworkResources Обработать ресурсы
-                4.      _socket.routes запрос, обновление, удаление ресурсов
+                4. +    _socket.routes запрос, обновление, удаление ресурсов
                 5.      удалять draggableplacemark после сохранения
-                6.      _socket.routes.onNetworkResourcesUpdated();
-                7.      _socket.routes.onNetworkResourcesRemoved();
+                6. +    _socket.routes.onNetworkResourcesUpdated();
+                7. +    _socket.routes.onNetworkResourcesRemoved();
+                8. +    Возможность редактировать только для edited
+                9.      Закрывать меню по Esc
         FIX :
                 1.      ymaps не отображается searchControlProvider
                 2. +    _ymap.showBounds(); вызывать после загрузки всех ресурсов по сокету
-                3.
+                3.      Кнопка множественного выбора должна быть недоступна если не выбран ни один из элементов списка
         NOTE :
                 1.
                 2.
                 3.
         DEBUG :
-                1.      _contextMenuHandler после реализации серверной части
+                1. +    _contextMenuHandler после реализации серверной части
                 2. +    _balloonOpenHandler после реализации серверной части
-                3.      _balloonCloseHandler после реализации серверной части
+                3. +    _balloonCloseHandler после реализации серверной части
+                4. +    Сохранение маршрута
+                5. +    Сохранение точки
     */
     function App () {
-        let _eventBus = null;
-        let _socket = null;
-        let _ymap = null;
+        let _eventBus = new utils.EventBus();
+        let _socketHelper = socket.helper();
+        let _ymap = new ymap.Ymap();
         let _node = node;
         let _route = route;
-        let _utils = utils;
         let _popup = popup;
 
         let _transposeDataOnMap = (() => {
@@ -64,13 +67,13 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 (networkResourceType === 'node') && (() => {
                     let clusterer = _ymap.getObjectCluster();
                     let mapObject = placemark(new Node(networkResourceObject));
-                    clusterer.getGeoObjects().forEach(o => (o.properties.get('external').guid === mapObject.properties.get('external').guid) && clusterer.remove(o));
+                    clusterer.getGeoObjects().forEach(o => { (o.properties.get('external').guid === mapObject.properties.get('external').guid) && clusterer.remove(o); });
                     !mapObject.properties.get('external').isDeprecated && clusterer.add(mapObject);
                 })();
                 (networkResourceType === 'route') && (() => {
                     let collection = _ymap.getObjectCollection();
                     let mapObject = polyline(new Route(networkResourceObject));
-                    collection.each(o => (o.properties.get('external').guid === mapObject.properties.get('external').guid) && collection.remove(o));
+                    collection.each(o => { (o.properties.get('external').guid === mapObject.properties.get('external').guid) && collection.remove(o); });
                     !mapObject.properties.get('external').isDeprecated && collection.add(mapObject);
                 })();
             };
@@ -79,13 +82,13 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
         let _contextMenuHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
-            let socket = _socket;
+            let socket = _socketHelper;
             let ymap = _ymap;
-            let utils = _utils.utils;
-            let Popup = _popup.Popup;
+            let popup = _popup;
+            let target;
 
             function createList (prop) {
-                return [
+                let list = [
                     (prop.type === 'node' && !prop.routePoint) && { id: 'check', text: 'Трасса: добавить' },
                     (prop.type === 'node' && prop.routePoint) && { id: 'uncheck', text: 'Трасса: исключить' },
                     (prop.type === 'node' && prop.routePoint) && { id: 'complete', text: 'Трасса: завершить' },
@@ -93,55 +96,120 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     (prop.type === 'node' || prop.type === 'route') && { id: 'remove', text: 'Удалить' },
                     (prop.type === 'node blueprint') && { id: 'fix', text: 'Зафиксировать' }
                 ];
+                return list.reduce((p, c) => { c && p.push(c); return p; }, []);
+            }
+
+            function getTarget (target) {
+                return new Promise((resolve, reject) => {
+                    if (target.options.getName() === 'cluster') {
+                        let geoObj = [];
+                        new popup.PopupWithSelection({
+                            title: 'Выбор объекта',
+                            content: 'Возможна только поэлементная обработка. Выберите один элемент из списка.',
+                            selectionList: target.getGeoObjects().map((o, i) => {
+                                let extProp = o.properties.get('external');
+                                geoObj.push({ id: extProp.guid, obj: o });
+                                return { id: extProp.guid, title: extProp.name || `Безымянный узел #${i}` };
+                            }),
+                            buttons: [{ id: 'secondary', title: 'Выбрать' }, { id: 'primary', title: 'Отменить' }],
+                            listeners: [
+                                { id: 'secondary', cb: (e, selection) => { geoObj.forEach(o => { (o.id === selection[0].id) && resolve(o.obj); }); } },
+                                { id: 'primary', cb: e => { reject(e); } }
+                            ]
+                        }).render().show();
+                    } else {
+                        resolve(target);
+                    }
+                });
+            }
+
+            function check (extProp) {
+                extProp.routePoint = true;
+                ymap.getEditablePolyline().point.add({ id: extProp.guid, placemark: target }).render();
+            }
+
+            function uncheck (extProp) {
+                delete extProp.routePoint;
+                ymap.getEditablePolyline().point.del({ id: extProp.guid }).render();
+            }
+
+            function complete () {
+                let ep = ymap.getEditablePolyline();
+                let coordinatePath = ep.point.all();
+                ep.point.each(p => { delete p.properties.get('external').routePoint; });
+                ep.reset();
+                socket.emitNetworkResourcesCreate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
+            }
+
+            function update (extProp) {
+                extProp.editable = true;
+                if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
+                else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
+                var clusterer = ymap.getObjectCluster();
+                var geoObjectState = clusterer.getObjectState(target);
+                if (geoObjectState.isShown) {
+                    if (geoObjectState.isClustered) {
+                        ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), 'Содержимое балуна', {
+                            closeButton: false,
+                            // contentLayout: ymap.getLayout('node')
+                        });
+                        // geoObjectState.cluster.state.set('activeObject', target);
+                        // clusterer.balloon.open(geoObjectState.cluster);
+                    } else {
+                        target.balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)));
+                    }
+                }
+                /*
+                try {
+                    target.balloon.open();
+                } catch (e) {
+                    ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), { content: 'loooser' }, {});
+                }
+                */
+            }
+
+            function remove (extProp) {
+                new popup.PopupDialog({
+                    title: 'Удалить объект?',
+                    content: 'Объект станет недоступным. Действие нельзя будет отменить!',
+                    buttons: [{ id: 'primary', title: 'Удалить' }, { id: 'secondary', title: 'Отменить' }],
+                    listeners: [
+                        { id: 'primary', cb: e => { socket.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); } },
+                        { id: 'secondary' }
+                    ]
+                }).render().show();
+            }
+
+            function fix () {
+                let prompt = new Promise((resolve, reject) => {
+                    new popup.PopupDialog({
+                        title: 'Зафиксировать как узел?',
+                        content: 'Новая точка соединения будет добавлена на карту.',
+                        buttons: [{ id: 'primary', title: 'Сохранить' }, { id: 'secondary', title: 'Отменить' }],
+                        listeners: [
+                            { id: 'primary', cb: e => { resolve(e); } },
+                            { id: 'secondary', cb: e => { reject(e); } }
+                        ]
+                    }).render().show();
+                });
+                prompt.then(() => {
+                    socket.emitNetworkResourcesCreate(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
+                }).catch(() => { });
             }
 
             return async e => {
-                if (e.get('target').options.getName() === 'cluster') return;
-                let target = e.get('target');
+                try { target = await getTarget(e.get('target')); } catch (e) { return; }
                 let extProp = target.properties.get('external');
                 let list = createList({ type: extProp.type, routePoint: extProp.routePoint, editable: extProp.editable });
-                let clicked = await ymap.getContextMenu().setList(list).render().setPosition(e.get('pagePixels')).show().onClick('listmenu');
-                const id = clicked.target.id;
-                if (id === 'check') {
-                    extProp.routePoint = true;
-                    ymap.getEditablePolyline().point.add({ id: extProp.guid, placemark: target }).render();
-                } else if (id === 'uncheck') {
-                    delete extProp.routePoint;
-                    ymap.getEditablePolyline().point.del({ id: extProp.guid }).render();
-                } else if (id === 'complete') {
-                    let ep = ymap.getEditablePolyline();
-                    let coordinatePath = ep.point.all();
-                    ep.point.each(p => delete p.properties.get('external').routePoint);
-                    ep.reset();
-                    socket.routes.emitNetworkResourcesCreate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
-                } else if (id === 'update') {
-                    extProp.editable = true;
-                    if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
-                    else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
-                    target.balloon.open();
-                } else if (id === 'remove') {
-                    let popup = new Popup()
-                        .setTitle('Удалить соединение?')
-                        .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
-                        .render()
-                        .setEventListener('yes', () => { popup.close(); socket.routes.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); })
-                        .setEventListener('no', () => popup.close())
-                        .show();
-                    utils.setDraggable(popup.getDOM(), '.title');
-                } else if (id === 'fix') {
-                    let prompt = new Promise((resolve, reject) => {
-                        let popup = new Popup()
-                            .setTitle('Зафиксировать как узел?')
-                            .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
-                            .render()
-                            .setEventListener('yes', () => { popup.close(); resolve(); })
-                            .setEventListener('no', () => { popup.close(); reject(); })
-                            .show();
-                        utils.setDraggable(popup.getDOM(), '.title');
-                    });
-                    prompt.then(() => {
-                        socket.routes.emitNetworkResourcesCreate(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
-                    }, () => { });
+                let clicked = await new popup.ContextMenu({ list: list, xy: e.get('pagePixels') }).render().show().awaitUserSelect();
+                switch (clicked) {
+                    case 'check': check(extProp); break;
+                    case 'uncheck': uncheck(extProp); break;
+                    case 'complete': complete(); break;
+                    case 'update': update(extProp); break;
+                    case 'remove': remove(extProp); break;
+                    case 'fix': fix(); break;
+                    default: break;
                 }
             };
         };
@@ -149,37 +217,37 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
         let _balloonOpenHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
-            let socket = _socket;
+            let socket = _socketHelper;
 
             async function getNetworkResources (o) {
                 let extProp = o.properties.get('external');
                 if (!['node', 'route'].includes(extProp.type)) return;
-                socket.getSocket().emit('network resource read', { type: extProp.type, guid: extProp.guid }, r => {
+                socket.emit('network resource read', { type: extProp.type, guid: extProp.guid }, r => {
                     let data = (extProp.type === 'node') ? new Node(r) : ((extProp.type === 'route') && new Route(r));
                     Object.assign(extProp, data.toPrimitive());
                 });
             }
 
-            return e => (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => getNetworkResources(o));
+            return e => { (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => { getNetworkResources(o); }); };
         };
 
         let _balloonCloseHandler = () => {
             let Node = _node.Node;
             let Route = _route.Route;
-            let Popup = _popup.Popup;
-            let utils = _utils.utils;
-            let socket = _socket.routes;
+            let popup = _popup;
+            let socket = _socketHelper;
 
             function prompt () {
                 return new Promise((resolve, reject) => {
-                    let popup = new Popup()
-                        .setTitle('Сохранить изменения?')
-                        .setButtons([{ title: 'Да', id: 'yes' }, { title: 'Нет', id: 'no' }])
-                        .render()
-                        .setEventListener('yes', () => { popup.close(); resolve(); })
-                        .setEventListener('no', () => { popup.close(); reject(); })
-                        .show();
-                    utils.setDraggable(popup.getDOM(), '.title');
+                    new popup.PopupDialog({
+                        title: 'Сохранить изменения?',
+                        content: 'Данные будут перезаписаны. Действия нельзя будет отменить!',
+                        buttons: [{ id: 'primary', title: 'Сохранить' }, { id: 'secondary', title: 'Отменить' }],
+                        listeners: [
+                            { id: 'primary', cb: e => { resolve(e); } },
+                            { id: 'secondary', cb: e => { reject(e); } }
+                        ]
+                    }).render().show();
                 });
             }
 
@@ -189,34 +257,28 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 let extProp = target.properties.get('external');
                 if (!extProp.editable) return;
                 prompt().then(() => {
+                    extProp.editable = false;
                     if (extProp.type === 'node') {
                         socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
-                        extProp.editable = false;
                         target.options.set('iconColor', '#F4425F');
                     } else if (extProp.type === 'route') {
                         socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
-                        extProp.editable = false;
                         target.options.set('strokeColor', '#F4425F');
                     }
-                }, () => { });
+                }).catch(() => { });
             };
         };
 
         this.run = async () => {
             (() => { // initialize event bus
-                _eventBus = new utils.EventBus();
                 _eventBus.initialize();
             })();
 
             (() => { // initialize socket
-                _socket = new socket.Socket();
-                _socket.connect();
-                _socket.initializeRoutes();
-                _socket.routes.onConnect(() => console.log('Established socket connection with a server'));
+                _socketHelper.onConnect(() => { console.log('Established socket connection with a server'); });
             })();
 
             await (() => { // initialize ymap
-                _ymap = new ymap.Ymap();
                 return new Promise(async (resolve, reject) => {
                     try { await _ymap.load(); } catch (e) { reject(e); }
                     _ymap.attachTo('map');
@@ -226,8 +288,8 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     _ymap.initializeObjectCollection();
                     _ymap.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
                     _ymap.registerEditablePolyline({ properties: { type: 'route blueprint' } });
-                    _ymap.initializeContextMenu();
-                    _ymap.initializeMapGlobalEvents();
+                    // _ymap.registerContextMenu();
+                    _ymap.registerMapGlobalEvents();
                     _ymap.getObjectCluster();
                     _ymap.setGeoObjectEventHandler('contextmenu', _contextMenuHandler());
                     _ymap.setGeoObjectEventHandler('balloonopen', _balloonOpenHandler());
@@ -238,12 +300,15 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             })();
 
             (() => { // data processing
-                _socket.routes.onNetworkResources(r => {
-                    r.data.forEach(d => _transposeDataOnMap(r.type, d));
+                _socketHelper.onNetworkResources(r => {
+                    r.data.forEach(d => { _transposeDataOnMap(r.type, d); });
                     _ymap.showBounds();
                 });
-                _socket.routes.emitNetworkResources({ type: 'node' });
-                _socket.routes.emitNetworkResources({ type: 'route' });
+                _socketHelper.emitNetworkResources({ type: 'node' });
+                _socketHelper.emitNetworkResources({ type: 'route' });
+                _socketHelper.onNetworkResourcesCreated(r => { _transposeDataOnMap(r.type, r.data); });
+                _socketHelper.onNetworkResourcesUpdated(r => { _transposeDataOnMap(r.type, r.data); });
+                _socketHelper.onNetworkResourcesRemoved(r => { _transposeDataOnMap(r.type, r.data); });
             })();
 
             (() => { // post config

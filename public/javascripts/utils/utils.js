@@ -1,9 +1,9 @@
 define([], function () {
     function setDraggable (target, draggingPoint) {
-        var pos1 = 0,
-            pos2 = 0,
-            pos3 = 0,
-            pos4 = 0;
+        var pos1 = 0;
+        var pos2 = 0;
+        var pos3 = 0;
+        var pos4 = 0;
 
         target.querySelector(draggingPoint).onmousedown = dragMouseDown;
 

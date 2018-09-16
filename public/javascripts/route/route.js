@@ -5,18 +5,19 @@ define([], function () {
         let route = {
             type: 'route',
             guid: obj.guid ? obj.guid : null,
-            isDeprecated: obj.isDeprecated ? obj.isDeprecated : null,
+            isDeprecated: obj.isDeprecated ? obj.isDeprecated : 0,
             coordinatePath: obj.coordinatePath ? parseCoords(obj.coordinatePath) : [],
-            routeDescription: obj.routeDescription ? obj.routeDescription : null,
-            cableDescription: obj.cableDescription ? obj.cableDescription : null,
-            cableLabelA: obj.cableLabelA ? obj.cableLabelA : null,
-            cableLabelB: obj.cableLabelB ? obj.cableLabelB : null,
-            cableLength: obj.cableLength ? obj.cableLength : null,
-            cableCores: obj.cableCores ? obj.cableCores : null,
-            cableType: obj.cableType ? obj.cableType : null
+            routeDescription: obj.routeDescription ? obj.routeDescription : '',
+            cableDescription: obj.cableDescription ? obj.cableDescription : '',
+            cableLabelA: obj.cableLabelA ? obj.cableLabelA : 0,
+            cableLabelB: obj.cableLabelB ? obj.cableLabelB : 0,
+            cableLength: obj.cableLength ? obj.cableLength : 0,
+            cableCores: obj.cableCores ? obj.cableCores : 0,
+            cableType: obj.cableType ? obj.cableType : ''
         };
 
         function parseCoords (coords) {
+            if (Array.isArray(coords)) return coords;
             let _coords = coords.split(',');
             _coords = _coords.map(v => parseFloat(v));
             let arr = new Array(_coords.length / 2);

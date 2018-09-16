@@ -5,13 +5,14 @@ define([], function () {
         let node = {
             type: 'node',
             guid: obj.guid ? obj.guid : null,
-            isDeprecated: obj.isDeprecated ? obj.isDeprecated : null,
-            coordinates: obj.coordinates ? parseCoords(obj.coordinates) : null,
-            name: obj.name ? obj.name : null,
-            description: obj.description ? obj.description : null
+            isDeprecated: obj.isDeprecated ? obj.isDeprecated : 0,
+            coordinates: obj.coordinates ? parseCoords(obj.coordinates) : [],
+            name: obj.name ? obj.name : '',
+            description: obj.description ? obj.description : ''
         };
 
         function parseCoords (coords) {
+            if (Array.isArray(coords)) return coords;
             let _coords = coords.split(',');
 
             return [parseFloat(_coords[0]), parseFloat(_coords[1])];

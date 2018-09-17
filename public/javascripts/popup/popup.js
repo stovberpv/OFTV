@@ -1,9 +1,19 @@
 define(['utils/index'], function (utils) {
     'use strict';
 
+    let contextMenu = null;
+    let popupDialog = null;
+    let popupWithSelection = null;
+
+    const MODE = {
+        SINGLE: 'S',
+        MULTIPLE: 'M'
+    };
+
     function PopupDialog (opts) {
         let _id = Math.floor(Math.random() * 100000);
-        let _popup = null;
+        let _mode = opts.mode || MODE.SINGLE;
+        let _layout = null;
         let _title = opts.title || '';
         let _content = opts.content || '';
         let _buttons = opts.buttons || [];
@@ -22,46 +32,56 @@ define(['utils/index'], function (utils) {
         }
 
         function setListeners () {
-            let popup = _popup;
+            if (!_layout) return;
+            let self = this;
+
             _listeners.forEach(l => {
                 function e (e) {
                     l.cb && l.cb(e);
-                    (l.finish === undefined || l.finish === true) && popup.parentNode.removeChild(popup);
+                    (l.finish === undefined || l.finish === true) && self.close();
                 }
-                try { popup.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
+                // try { _layout.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
+                _layout.querySelector(`.${l.id}`).addEventListener('click', e);
             });
         }
 
         this.getDOM = () => {
-            return _popup;
+            return _layout;
         };
 
         this.render = () => {
             let template = document.createElement('template');
             template.innerHTML = layout();
-            _popup = template.content.firstChild;
+            _layout = template.content.firstChild;
 
-            setListeners();
-            isDraggable && utils.utils.setDraggable(_popup, '.title');
+            setListeners.bind(this)();
+            isDraggable && utils.utils.setDraggable(_layout, '.title');
 
             return this;
         };
 
         this.show = () => {
-            _popup && document.body.appendChild(_popup);
-            _popup = document.getElementById(`popup-${_id}`);
-
+            _layout && document.body.appendChild(_layout);
+            _layout = document.getElementById(`popup-${_id}`);
+            if (_mode === MODE.SINGLE) {
+                popupDialog && popupDialog.close();
+                popupDialog = this;
+            }
             return this;
         };
 
         this.close = () => {
-            _popup.parentNode.removeChild(_popup);
+            if (!_layout) return;
+            // try { _layout.parentNode.removeChild(_layout); } catch (e) { console.log(e); }
+            _layout.parentNode.removeChild(_layout);
+            popupDialog = null;
         };
     }
 
     function PopupWithSelection (opts) {
         let _id = Math.floor(Math.random() * 100000);
-        let _popup = null;
+        let _mode = opts.mode || MODE.SINGLE;
+        let _layout = null;
         let _title = opts.title || '';
         let _content = opts.content || '';
         let _selectionList = opts.selectionList || {};
@@ -86,16 +106,19 @@ define(['utils/index'], function (utils) {
         }
 
         function setListeners () {
-            let popup = _popup;
+            if (!_layout) return;
+            let self = this;
+
             _listeners.forEach(l => {
                 function e (e) {
-                    let selectedElements = popup.querySelectorAll('.selected');
+                    let selectedElements = _layout.querySelectorAll('.selected');
                     l.cb && l.cb(e, selectedElements);
-                    (l.finish === undefined || l.finish === true) && popup.parentNode.removeChild(popup);
+                    (l.finish === undefined || l.finish === true) && self.close();
                 }
-                try { popup.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
+                // try { _layout.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
+                _layout.querySelector(`.${l.id}`).addEventListener('click', e);
             });
-            Array.from(popup.querySelectorAll('div.list-element')).forEach(div => {
+            Array.from(_layout.querySelectorAll('div.list-element')).forEach(div => {
                 div.addEventListener('click', e => {
                     Array.from(e.target.closest('.popup').querySelectorAll('div.list-element.selected')).forEach(selected => {
                         let target = e.target.closest('div');
@@ -107,35 +130,42 @@ define(['utils/index'], function (utils) {
         }
 
         this.getDOM = () => {
-            return _popup;
+            return _layout;
         };
 
         this.render = () => {
             let template = document.createElement('template');
             template.innerHTML = layout();
-            _popup = template.content.firstChild;
+            _layout = template.content.firstChild;
 
-            setListeners();
-            isDraggable && utils.utils.setDraggable(_popup, '.title');
+            setListeners.bind(this)();
+            isDraggable && utils.utils.setDraggable(_layout, '.title');
 
             return this;
         };
 
         this.show = () => {
-            _popup && document.body.appendChild(_popup);
-            _popup = document.getElementById(`popup-${_id}`);
-
+            _layout && document.body.appendChild(_layout);
+            _layout = document.getElementById(`popup-${_id}`);
+            if (_mode === MODE.SINGLE) {
+                popupWithSelection && popupWithSelection.close();
+                popupWithSelection = this;
+            }
             return this;
         };
 
         this.close = () => {
-            _popup.parentNode.removeChild(_popup);
+            if (!_layout) return;
+            // try { _layout.parentNode.removeChild(_layout); } catch (e) { console.log(e); }
+            _layout.parentNode.removeChild(_layout);
+            popupWithSelection = null;
         };
     }
 
     function ContextMenu (opts) {
         let _id = Math.floor(Math.random() * 100000);
-        let _contextMenu = null;
+        let _mode = opts.mode || MODE.SINGLE;
+        let _layout = null;
         let _caller = null;
         let _list = opts.list || [];
         let _listeners = opts.listeners || [];
@@ -156,7 +186,7 @@ define(['utils/index'], function (utils) {
         };
 
         function setListeners () {
-            if (!_contextMenu) return;
+            if (!_layout) return;
             let self = this;
 
             (() => {
@@ -165,22 +195,29 @@ define(['utils/index'], function (utils) {
                         (l.finish === undefined || l.finish === true) && self.close();
                         l.cb && l.cb(e);
                     }
-                    try { _contextMenu.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
+                    // try { _layout.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
+                    _layout.querySelector(`.${l.id}`).addEventListener('click', e);
                 });
             })();
 
             (() => {
-                document.body.addEventListener('click', function selfRemovedFunction (e) {
-                    if (!e.target.closest(`#contextmenu-${_id}`)) {
-                        self.close();
-                        document.body.removeEventListener('click', selfRemovedFunction);
-                    }
-                });
-                _contextMenu.addEventListener('click', e => { e.stopPropagation(); });
+                document.body.addEventListener('click', globalClickEvent);
+                _layout.addEventListener('click', e => { e.stopPropagation(); });
             })();
         }
 
-        this.getDOM = () => { return _contextMenu; };
+        let globalClickEvent = (() => {
+            function globalClickEvent (e) {
+                if (!e.target.closest(`#contextmenu-${_id}`)) {
+                    document.body.removeEventListener('click', globalClickEvent);
+                    this.close();
+                }
+            }
+
+            return globalClickEvent.bind(this);
+        })();
+
+        this.getDOM = () => { return _layout; };
 
         this.setCaller = caller => { _caller = caller; };
 
@@ -189,7 +226,7 @@ define(['utils/index'], function (utils) {
         this.render = () => {
             let template = document.createElement('template');
             template.innerHTML = layout();
-            _contextMenu = template.content.firstChild;
+            _layout = template.content.firstChild;
 
             setListeners.bind(this)();
 
@@ -197,21 +234,27 @@ define(['utils/index'], function (utils) {
         };
 
         this.show = () => {
-            _contextMenu && document.body.appendChild(_contextMenu);
-            _contextMenu = document.getElementById(`contextmenu-${_id}`);
+            _layout && document.body.appendChild(_layout);
+            _layout = document.getElementById(`contextmenu-${_id}`);
+            if (_mode === MODE.SINGLE) {
+                contextMenu && contextMenu.close();
+                contextMenu = this;
+            }
 
             return this;
         };
 
         this.close = () => {
-            if (!_contextMenu) return;
-            try { _contextMenu.parentNode.removeChild(_contextMenu); } catch (e) { console.log(e); }
-            _contextMenu = null;
+            if (!_layout) return;
+            document.body.removeEventListener('click', globalClickEvent);
+            // try { _layout.parentNode.removeChild(_layout); } catch (e) { console.log(e); }
+            _layout.parentNode.removeChild(_layout);
+            contextMenu = null;
         };
 
         this.awaitUserSelect = liId => {
             let self = this;
-            let target = liId ? _contextMenu.querySelector(`#${liId}`) : _contextMenu;
+            let target = liId ? _layout.querySelector(`#${liId}`) : _layout;
             return new Promise((resolve, reject) => {
                 if (!target) reject(new Error(`${liId} not found!`));
                 target.addEventListener('click', e => { self.close(); resolve(e.target.closest('.list-element').id); });

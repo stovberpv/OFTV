@@ -11,12 +11,14 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 6. +    _socket.routes.onNetworkResourcesUpdated();
                 7. +    _socket.routes.onNetworkResourcesRemoved();
                 8. +    Возможность редактировать только для edited
-                9.      Закрывать меню по Esc
+                9.      ContextMenu закрывать по Esc
+                10.     ContextMenu выводить имя точки
         FIX :
                 1.      ymaps не отображается searchControlProvider
                 2. +    _ymap.showBounds(); вызывать после загрузки всех ресурсов по сокету
                 3.      Кнопка множественного выбора должна быть недоступна если не выбран ни один из элементов списка
-                4.      ContextMenu скрывать предыдущее
+                4. +    ContextMenu закрывать предыдущее
+                5.      ContextMenu не использовать await. вместо него - callback
         NOTE :
                 1.
                 2.
@@ -94,7 +96,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     (prop.type === 'node' && prop.routePoint) && { id: 'uncheck', text: 'Трасса: исключить' },
                     (prop.type === 'node' && prop.routePoint) && { id: 'complete', text: 'Трасса: зафиксировать' },
                     ((prop.type === 'node' || prop.type === 'route') && !prop.editable) && { id: 'update', text: 'Редактировать описание' },
-                    (prop.type === 'node' || prop.type === 'route') && { id: 'remove', text: 'Удалить' },
+                    (prop.type === 'node' || prop.type === 'route') && { id: 'delete', text: 'Удалить' },
                     (prop.type === 'node blueprint') && { id: 'fix', text: 'Точка: зафиксировать' }
                 ];
                 return list.reduce((p, c) => { c && p.push(c); return p; }, []);
@@ -169,7 +171,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 */
             }
 
-            function remove (extProp) {
+            function del (extProp) {
                 new popup.PopupDialog({
                     title: 'Удалить объект?',
                     content: 'Объект станет недоступным. Действие нельзя будет отменить!',
@@ -208,7 +210,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     case 'uncheck': uncheck(extProp); break;
                     case 'complete': complete(); break;
                     case 'update': update(extProp); break;
-                    case 'remove': remove(extProp); break;
+                    case 'delete': del(extProp); break;
                     case 'fix': fix(); break;
                     default: break;
                 }

@@ -315,7 +315,7 @@ define(['ymaps'], function (ymaps) {
                     clusterIcons: [{ href: '', size: [30, 30], offset: [-15, -15] }],
                     clusterIconContentLayout: clusterIconContentLayout,
                     showInAlphabeticalOrder: true,
-                    // hasBalloon: false
+                    hasBalloon: false
                 };
             };
 

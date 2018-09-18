@@ -39,11 +39,15 @@ define(['utils/index'], function (utils) {
             let self = this;
 
             _layout.querySelector(`#primary`).addEventListener('click', e => {
+                e.stopPropagation();
+                e.preventDefault();
                 self.close();
                 _buttons.primary.cb && _buttons.primary.cb(e.target.id);
             });
 
             _layout.querySelector(`#secondary`).addEventListener('click', e => {
+                e.stopPropagation();
+                e.preventDefault();
                 self.close();
                 _buttons.secondary.cb && _buttons.secondary.cb(e.target.id);
             });
@@ -117,16 +121,18 @@ define(['utils/index'], function (utils) {
             let self = this;
 
             _layout.querySelector(`#primary`).addEventListener('click', e => {
+                e.stopPropagation();
+                e.preventDefault();
                 let selectedElements = _layout.querySelectorAll('.selected');
                 if (selectedElements.length === 0) return;
                 self.close();
-                _buttons.primary.cb && _buttons.primary.cb(e.target, Array.from(selectedElements).map(e => { return e.id; }));
+                _buttons.primary.cb && _buttons.primary.cb(e.target.id, Array.from(selectedElements).map(e => { return e.id; }));
             });
             _layout.querySelector(`#secondary`).addEventListener('click', e => {
-                let selectedElements = _layout.querySelectorAll('.selected');
-                if (selectedElements.length === 0) return;
+                e.stopPropagation();
+                e.preventDefault();
                 self.close();
-                _buttons.secondary.cb && _buttons.secondary.cb(e.target, Array.from(selectedElements).map(e => { return e.id; }));
+                _buttons.secondary.cb && _buttons.secondary.cb(e.target.id);
             });
 
             Array.from(_layout.querySelectorAll('div.list-element')).forEach(div => {
@@ -179,8 +185,19 @@ define(['utils/index'], function (utils) {
         let _layout = null;
         let _caller = null;
         let _list = opts.list || [];
-        let _listeners = opts.listeners || [];
+        let _cb = opts.cb || null;
         let _xy = opts.xy || [];
+
+        let globalClickEvent = (() => {
+            function globalClickEvent (e) {
+                if (!e.target.closest(`#contextmenu-${_id}`)) {
+                    document.body.removeEventListener('click', globalClickEvent);
+                    this.close();
+                }
+            }
+
+            return globalClickEvent.bind(this);
+        })();
 
         function layout () {
             let list = _list.reduce((p, c, i, a) => {
@@ -200,33 +217,20 @@ define(['utils/index'], function (utils) {
             if (!_layout) return;
             let self = this;
 
-            (() => {
-                _listeners.forEach(l => {
-                    function e (e) {
-                        (l.finish === undefined || l.finish === true) && self.close();
-                        l.cb && l.cb(e);
-                    }
-                    // try { _layout.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
-                    _layout.querySelector(`.${l.id}`).addEventListener('click', e);
-                });
-            })();
+            _layout.addEventListener('click', e => {
+                e.stopPropagation();
+                e.preventDefault();
+                let target = e.target.closest('div.list-element').id;
+                self.close();
+                _cb && _cb(target);
+            });
 
-            (() => {
-                document.body.addEventListener('click', globalClickEvent);
-                _layout.addEventListener('click', e => { e.stopPropagation(); });
-            })();
+            document.body.addEventListener('click', globalClickEvent);
+            _layout.addEventListener('click', e => {
+                e.stopPropagation();
+                e.preventDefault();
+            });
         }
-
-        let globalClickEvent = (() => {
-            function globalClickEvent (e) {
-                if (!e.target.closest(`#contextmenu-${_id}`)) {
-                    document.body.removeEventListener('click', globalClickEvent);
-                    this.close();
-                }
-            }
-
-            return globalClickEvent.bind(this);
-        })();
 
         this.getDOM = () => { return _layout; };
 
@@ -238,7 +242,6 @@ define(['utils/index'], function (utils) {
             let template = document.createElement('template');
             template.innerHTML = layout();
             _layout = template.content.firstChild;
-
             setListeners.bind(this)();
 
             return this;
@@ -258,7 +261,6 @@ define(['utils/index'], function (utils) {
         this.close = () => {
             if (!_layout) return;
             document.body.removeEventListener('click', globalClickEvent);
-            // try { _layout.parentNode.removeChild(_layout); } catch (e) { console.log(e); }
             _layout.parentNode.removeChild(_layout);
             contextMenu = null;
         };

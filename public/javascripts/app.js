@@ -19,6 +19,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 3.      Кнопка множественного выбора должна быть недоступна если не выбран ни один из элементов списка
                 4. +    ContextMenu закрывать предыдущее
                 5.      ContextMenu не использовать await. вместо него - callback
+                6.      Трасса зафиксировать не отображаться если точкаодна
         NOTE :
                 1.
                 2.
@@ -90,7 +91,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             let popup = _popup;
             let target;
 
-            function createList (prop) {
+            function createContextmenuList (prop) {
                 let list = [
                     (prop.type === 'node' && !prop.routePoint) && { id: 'check', text: 'Трасса: добавить' },
                     (prop.type === 'node' && prop.routePoint) && { id: 'uncheck', text: 'Трасса: исключить' },
@@ -115,8 +116,8 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                                 return { id: extProp.guid, title: extProp.name || `Узел без имени #${i}` };
                             }),
                             buttons: {
-                                secondary: { title: 'Выбрать', cb: (e, sel) => { geoObj.forEach(o => { (o.id === sel[0]) && resolve(o.obj); }); } },
-                                primary: { title: 'Отменить', cb: (e, sel) => { reject(e); } }
+                                primary: { title: 'Выбрать', cb: (e, sel) => { geoObj.forEach(o => { (o.id === sel[0]) && resolve(o.obj); }); } },
+                                secondary: { title: 'Отменить', cb: (e, sel) => { reject(e); } }
                             }
                         }).render().show();
                     } else {
@@ -147,19 +148,20 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 extProp.editable = true;
                 if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
                 else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
+                let y = ymap;
                 // var clusterer = ymap.getObjectCluster();
                 // var geoObjectState = clusterer.getObjectState(target);
                 // if (geoObjectState.isShown) {
-                    // if (geoObjectState.isClustered) {
-                        // ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), 'Содержимое балуна', {
-                            // closeButton: false,
-                            // contentLayout: ymap.getLayout('node')
-                        // });
-                        // geoObjectState.cluster.state.set('activeObject', target);
-                        // clusterer.balloon.open(geoObjectState.cluster);
-                    // } else {
-                        target.balloon.open();
-                    // }
+                // if (geoObjectState.isClustered) {
+                // ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), 'Содержимое балуна', {
+                // closeButton: false,
+                // contentLayout: ymap.getLayout('node')
+                // });
+                // geoObjectState.cluster.state.set('activeObject', target);
+                // clusterer.balloon.open(geoObjectState.cluster);
+                // } else {
+                target.balloon.open();
+                // }
                 // }
                 /*
                 try {
@@ -182,35 +184,34 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             }
 
             function fix () {
-                let prompt = new Promise((resolve, reject) => {
-                    new popup.PopupDialog({
-                        title: 'Зафиксировать как узел?',
-                        content: 'Новая точка соединения будет добавлена на карту.',
-                        buttons: {
-                            primary: { title: 'Сохранить', cb: e => { resolve(e); } },
-                            secondary: { title: 'Отменить', cb: e => { reject(e); } }
-                        }
-                    }).render().show();
-                });
-                prompt.then(() => {
-                    socket.emitNetworkResourcesCreate(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
-                }).catch(() => { });
+                new popup.PopupDialog({
+                    title: 'Зафиксировать как узел?',
+                    content: 'Новая точка соединения будет добавлена на карту.',
+                    buttons: {
+                        primary: { title: 'Сохранить', cb: e => { socket.emitNetworkResourcesCreate(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive()); } },
+                        secondary: { title: 'Отменить', cb: e => { } }
+                    }
+                }).render().show();
             }
 
             return async e => {
                 try { target = await getTarget(e.get('target')); } catch (e) { return; }
                 let extProp = target.properties.get('external');
-                let list = createList({ type: extProp.type, routePoint: extProp.routePoint, editable: extProp.editable });
-                let clicked = await new popup.ContextMenu({ list: list, xy: e.get('pagePixels') }).render().show().awaitUserSelect();
-                switch (clicked) {
-                    case 'check': check(extProp); break;
-                    case 'uncheck': uncheck(extProp); break;
-                    case 'complete': complete(); break;
-                    case 'update': update(extProp); break;
-                    case 'delete': del(extProp); break;
-                    case 'fix': fix(); break;
-                    default: break;
-                }
+                new popup.ContextMenu({
+                    list: createContextmenuList(extProp),
+                    xy: e.get('pagePixels'),
+                    cb: clicked => {
+                        switch (clicked) {
+                            case 'check': check(extProp); break;
+                            case 'uncheck': uncheck(extProp); break;
+                            case 'complete': complete(); break;
+                            case 'update': update(extProp); break;
+                            case 'delete': del(extProp); break;
+                            case 'fix': fix(); break;
+                            default: break;
+                        }
+                    }
+                }).render().show();
             };
         };
 
@@ -237,34 +238,41 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             let popup = _popup;
             let socket = _socketHelper;
 
-            function prompt () {
-                return new Promise((resolve, reject) => {
-                    new popup.PopupDialog({
-                        title: 'Сохранить изменения?',
-                        content: 'Данные будут перезаписаны. Действия нельзя будет отменить!',
-                        buttons: {
-                            primary: { title: 'Сохранить', cb: e => { resolve(e); } },
-                            secondary: { title: 'Отменить', cb: e => { reject(e); } }
-                        }
-                    }).render().show();
-                });
-            }
-
             return async e => {
                 if (e.get('cluster')) return;
                 let target = e.get('target');
                 let extProp = target.properties.get('external');
                 if (!extProp.editable) return;
-                prompt().then(() => {
-                    extProp.editable = false;
-                    if (extProp.type === 'node') {
-                        socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
-                        target.options.set('iconColor', '#F4425F');
-                    } else if (extProp.type === 'route') {
-                        socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
-                        target.options.set('strokeColor', '#F4425F');
+                new popup.PopupDialog({
+                    title: `Сохранить изменения ${extProp.name || extProp.routeDescription || ''}?`,
+                    content: 'Данные будут перезаписаны. Действия нельзя будет отменить!',
+                    buttons: {
+                        primary: {
+                            title: 'Сохранить',
+                            cb: e => {
+                                extProp.editable = false;
+                                if (extProp.type === 'node') {
+                                    socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
+                                    target.options.set('iconColor', '#F4425F');
+                                } else if (extProp.type === 'route') {
+                                    socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
+                                    target.options.set('strokeColor', '#F4425F');
+                                }
+                            }
+                        },
+                        secondary: {
+                            title: 'Отменить',
+                            cb: e => {
+                                extProp.editable = false;
+                                if (extProp.type === 'node') {
+                                    target.options.set('iconColor', '#F4425F');
+                                } else if (extProp.type === 'route') {
+                                    target.options.set('strokeColor', '#F4425F');
+                                }
+                            }
+                        }
                     }
-                }).catch(() => { });
+                }).render().show();
             };
         };
 

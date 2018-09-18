@@ -103,11 +103,23 @@ span {
 
 /* #region popup */
 
-.popup {
+/* #region popup global */
+
+.popup-wrapper {
     position: absolute;
-    top: 50%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+    background-color: rgba(var(--vulcan), .5);
+}
+
+.popup-wrapper .container {
+    position: absolute;
+    top: 20%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -20%);
     background-color: rgba(var(--white), 1);
     border-radius: 4px;
     box-shadow: 0 0 10px 0 rgba(var(--vulcan), .5);
@@ -116,27 +128,17 @@ span {
     padding: 10px;
     width: 250px;
     grid-row-gap: 10px;
+    z-index: 2;
+    animation: show .5s;
 }
 
-.popup.popup-dialog {
-    height: 150px;
-    grid-template-rows: repeat(3, auto);
-}
-
-.popup.popup-with-selection {
-    min-height: 200px;
-    max-height: 50%;
-    height: auto;
-    grid-template-rows: repeat(4, auto);
-}
-
-.popup div {
+.popup-wrapper .container div {
     text-align: center;
     align-self: center;
     place-self: center;
 }
 
-.popup .title {
+.popup-wrapper .title {
     grid-row: 1;
     align-self: center;
     place-self: center stretch;
@@ -146,36 +148,79 @@ span {
     font-size: 1.1rem;
 }
 
-.popup .content {
+.popup-wrapper .content {
     grid-row: 2;
     color: rgba(var(--vulcan), .4);
     font-size: .9rem;
 }
 
-.popup.popup-with-selection .selection-list {
+.popup-wrapper .controls {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    grid-gap: 10px;
+    font-size: .75rem;
+}
+
+.popup-wrapper .controls .button {
+    border-radius: 3px;
+    color: rgba(var(--white), 1);
+    padding: 0 10px;
+    cursor: pointer;
+    transition: all .3s;
+    padding: 10px 15px;
+    text-transform: uppercase;
+}
+
+.popup-wrapper .controls .button#primary {
+    background-color: rgba(var(--carnation), .8);
+}
+
+.popup-wrapper .controls .button#primary:hover {
+    background-color: rgba(var(--carnation), 1);
+}
+
+.popup-wrapper .controls .button#secondary {
+    background-color: rgba(var(--vulcan), .3);
+}
+
+.popup-wrapper .controls .button#secondary:hover {
+    background-color: rgba(var(--vulcan), .5);
+}
+
+/* #endregion */
+
+/* #region popup dialog-with-selection */
+
+.popup-wrapper.dialog-with-selection .container {
+    min-height: 200px;
+    height: auto;
+    grid-template-rows: repeat(4, auto);
+}
+
+.popup-wrapper.dialog-with-selection .selection-list {
     grid-row: 3;
     list-style-type: none;
 }
 
-.popup.popup-with-selection .selection-list ul {
+.popup-wrapper.dialog-with-selection .selection-list ul {
     color: rgba(var(--vulcan), .8);
     font-size: .9rem;
     margin: 0 0 0 20px;
     padding: 0;
 }
 
-.popup.popup-with-selection .selection-list ul div {
+.popup-wrapper.dialog-with-selection .selection-list ul div {
     position: relative;
     cursor: pointer;
 }
 
-.popup.popup-with-selection .selection-list ul div li {
+.popup-wrapper.dialog-with-selection .selection-list ul div li {
     list-style: none;
     margin: 10px 0;
     text-align: left;
 }
 
-.popup.popup-with-selection .selection-list ul div span {
+.popup-wrapper.dialog-with-selection .selection-list ul div span {
     border: 1px solid rgba(var(--vulcan), .5);
     width: .9rem;
     height: .9rem;
@@ -187,54 +232,29 @@ span {
     transition: all .3s;
 }
 
-.popup.popup-with-selection .selection-list ul div.selected span {
+.popup-wrapper.dialog-with-selection .selection-list ul div.selected span {
     border-color: transparent;
     background-color: rgba(var(--carnation), 1);
 }
 
-.popup .controls {
-    display: grid;
-    grid-template-columns: repeat(2, auto);
-    grid-gap: 10px;
-    font-size: .75rem;
-}
-
-.popup.popup-dialog .controls {
-    grid-row: 3;
-}
-
-.popup.popup-with-selection .controls {
+.popup-wrapper.dialog-with-selection .controls {
     grid-row: 4;
 }
 
-.popup .controls .button {
-    border-radius: 3px;
-    /* width: 80px; */
-    /* height: 40px; */
-    /* line-height: 40px; */
-    color: rgba(var(--white), 1);
-    padding: 0 10px;
-    cursor: pointer;
-    transition: all .3s;
-    padding: 10px 15px;
-    text-transform: uppercase;
+/* #endregion */
+
+/* #region popup dialog */
+
+.popup-wrapper.dialog .container {
+    height: 150px;
+    grid-template-rows: repeat(3, auto);
 }
 
-.popup .controls .button.primary {
-    background-color: rgba(var(--carnation), .8);
+.popup-wrapper.dialog .controls {
+    grid-row: 3;
 }
 
-.popup .controls .button.primary:hover {
-    background-color: rgba(var(--carnation), 1);
-}
-
-.popup .controls .button.secondary {
-    background-color: rgba(var(--vulcan), .3);
-}
-
-.popup .controls .button.secondary:hover {
-    background-color: rgba(var(--vulcan), .5);
-}
+/* #endregion */
 
 /* #region contextmenu */
 
@@ -253,8 +273,9 @@ span {
     cursor: pointer;
     padding: 10px 20px;
     opacity: .6;
-    font-size: .85rem;
+    font-size: .75rem;
     transition: all .3s;
+    font-weight: bold;
 }
 
 .contextmenu div.divider {
@@ -408,6 +429,20 @@ ymaps>div.wrapper div.cable-cores {
 
 ymaps>div.wrapper div.cable-type {
     grid-area: 4 / 3;
+}
+
+/* #endregion */
+
+/* #region animation */
+
+@keyframes show {
+    0% {
+        top: 15%;
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
 }
 
 /* #endregion */

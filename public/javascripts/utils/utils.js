@@ -5,7 +5,8 @@ define([], function () {
         var pos3 = 0;
         var pos4 = 0;
 
-        target.querySelector(draggingPoint).onmousedown = dragMouseDown;
+        target = target.querySelector(draggingPoint);
+        target.onmousedown = dragMouseDown;
 
         function dragMouseDown (e) {
             e = e || window.event;

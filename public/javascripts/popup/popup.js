@@ -17,31 +17,35 @@ define(['utils/index'], function (utils) {
         let _title = opts.title || '';
         let _content = opts.content || '';
         let _buttons = opts.buttons || [];
-        let _listeners = opts.listeners || [];
         let isDraggable = opts.isDraggable || true;
 
         function layout () {
+            // ${_buttons.reduce((p, c) => `${p}<div class='button ${c.id}'>${c.title}</div>`, '')}
             return `
-            <div id='popup-${_id}' class='popup popup-dialog'>
-                <div class='title'>${_title}</div>
-                <div class='content'>${_content}</div>
-                <div class='controls'>
-                    ${_buttons.reduce((p, c) => `${p}<div class='button ${c.id}'>${c.title}</div>`, '')}
-                </div>
-            </div>`.replace(/\s\s+/gmi, '');
+                <div id='popup-${_id}' class='popup-wrapper popup dialog'>
+                    <div class='container'>
+                        <div class='title'>${_title}</div>
+                        <div class='content'>${_content}</div>
+                        <div class='controls'>
+                            <div id='primary' class='button'>${_buttons.primary.title || 'Кнопка 1'}</div>
+                            <div id='secondary' class='button'>${_buttons.secondary.title || 'Кнопка 2'}</div>
+                        </div>
+                    </div>
+                </div>`.replace(/\s\s+/gmi, '');
         }
 
         function setListeners () {
             if (!_layout) return;
             let self = this;
 
-            _listeners.forEach(l => {
-                function e (e) {
-                    l.cb && l.cb(e);
-                    (l.finish === undefined || l.finish === true) && self.close();
-                }
-                // try { _layout.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
-                _layout.querySelector(`.${l.id}`).addEventListener('click', e);
+            _layout.querySelector(`#primary`).addEventListener('click', e => {
+                self.close();
+                _buttons.primary.cb && _buttons.primary.cb(e.target.id);
+            });
+
+            _layout.querySelector(`#secondary`).addEventListener('click', e => {
+                self.close();
+                _buttons.secondary.cb && _buttons.secondary.cb(e.target.id);
             });
         }
 
@@ -55,7 +59,7 @@ define(['utils/index'], function (utils) {
             _layout = template.content.firstChild;
 
             setListeners.bind(this)();
-            isDraggable && utils.utils.setDraggable(_layout, '.title');
+            isDraggable && utils.utils.setDraggable(_layout, '.container');
 
             return this;
         };
@@ -85,39 +89,46 @@ define(['utils/index'], function (utils) {
         let _title = opts.title || '';
         let _content = opts.content || '';
         let _selectionList = opts.selectionList || {};
-        let _buttons = opts.buttons || [];
-        let _listeners = opts.listeners || [];
+        let _buttons = opts.buttons || {};
         let isDraggable = opts.isDraggable || true;
 
         function layout () {
+            // ${_buttons.reduce((p, c) => `${p}<div class='button ${c.id}'>${c.title}</div>`, '')}
             return `
-            <div id='popup-${_id}' class='popup popup-with-selection'>
-                <div class='title'>${_title}</div>
-                <div class='content'>${_content}</div>
-                <div class='selection-list'>
-                    <ul>
-                        ${_selectionList.reduce((p, c) => `${p}<div class='list-element' id='${c.id}'><span></span><li>${c.title}</li></div>`, '')}
-                    </ul>
-                </div>
-                <div class='controls'>
-                    ${_buttons.reduce((p, c) => `${p}<div class='button ${c.id}'>${c.title}</div>`, '')}
-                </div>
-            </div>`.replace(/\s\s+/gmi, '');
+                <div id='popup-${_id}' class='popup-wrapper popup dialog-with-selection'>
+                    <div class='container'>
+                        <div class='title'>${_title}</div>
+                        <div class='content'>${_content}</div>
+                        <div class='selection-list'>
+                            <ul>
+                                ${_selectionList.reduce((p, c) => `${p}<div class='list-element' id='${c.id}'><span></span><li>${c.title}</li></div>`, '')}
+                            </ul>
+                        </div>
+                        <div class='controls'>
+                            <div id='primary' class='button'>${_buttons.primary.title || 'Кнопка 1'}</div>
+                            <div id='secondary' class='button'>${_buttons.secondary.title || 'Кнопка 2'}</div>
+                        </div>
+                    </div>
+                </div>`.replace(/\s\s+/gmi, '');
         }
 
         function setListeners () {
             if (!_layout) return;
             let self = this;
 
-            _listeners.forEach(l => {
-                function e (e) {
-                    let selectedElements = _layout.querySelectorAll('.selected');
-                    l.cb && l.cb(e, selectedElements);
-                    (l.finish === undefined || l.finish === true) && self.close();
-                }
-                // try { _layout.querySelector(`.${l.id}`).addEventListener('click', e); } catch (e) { console.log(e); }
-                _layout.querySelector(`.${l.id}`).addEventListener('click', e);
+            _layout.querySelector(`#primary`).addEventListener('click', e => {
+                let selectedElements = _layout.querySelectorAll('.selected');
+                if (selectedElements.length === 0) return;
+                self.close();
+                _buttons.primary.cb && _buttons.primary.cb(e.target, Array.from(selectedElements).map(e => { return e.id; }));
             });
+            _layout.querySelector(`#secondary`).addEventListener('click', e => {
+                let selectedElements = _layout.querySelectorAll('.selected');
+                if (selectedElements.length === 0) return;
+                self.close();
+                _buttons.secondary.cb && _buttons.secondary.cb(e.target, Array.from(selectedElements).map(e => { return e.id; }));
+            });
+
             Array.from(_layout.querySelectorAll('div.list-element')).forEach(div => {
                 div.addEventListener('click', e => {
                     Array.from(e.target.closest('.popup').querySelectorAll('div.list-element.selected')).forEach(selected => {
@@ -139,7 +150,7 @@ define(['utils/index'], function (utils) {
             _layout = template.content.firstChild;
 
             setListeners.bind(this)();
-            isDraggable && utils.utils.setDraggable(_layout, '.title');
+            isDraggable && utils.utils.setDraggable(_layout, '.container');
 
             return this;
         };

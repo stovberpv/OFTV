@@ -112,13 +112,12 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                             selectionList: target.getGeoObjects().map((o, i) => {
                                 let extProp = o.properties.get('external');
                                 geoObj.push({ id: extProp.guid, obj: o });
-                                return { id: extProp.guid, title: extProp.name || `Безымянный узел #${i}` };
+                                return { id: extProp.guid, title: extProp.name || `Узел без имени #${i}` };
                             }),
-                            buttons: [{ id: 'secondary', title: 'Выбрать' }, { id: 'primary', title: 'Отменить' }],
-                            listeners: [
-                                { id: 'secondary', cb: (e, selection) => { geoObj.forEach(o => { (o.id === selection[0].id) && resolve(o.obj); }); } },
-                                { id: 'primary', cb: e => { reject(e); } }
-                            ]
+                            buttons: {
+                                secondary: { title: 'Выбрать', cb: (e, sel) => { geoObj.forEach(o => { (o.id === sel[0]) && resolve(o.obj); }); } },
+                                primary: { title: 'Отменить', cb: (e, sel) => { reject(e); } }
+                            }
                         }).render().show();
                     } else {
                         resolve(target);
@@ -148,20 +147,20 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 extProp.editable = true;
                 if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
                 else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
-                var clusterer = ymap.getObjectCluster();
-                var geoObjectState = clusterer.getObjectState(target);
-                if (geoObjectState.isShown) {
-                    if (geoObjectState.isClustered) {
-                        ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), 'Содержимое балуна', {
-                            closeButton: false,
+                // var clusterer = ymap.getObjectCluster();
+                // var geoObjectState = clusterer.getObjectState(target);
+                // if (geoObjectState.isShown) {
+                    // if (geoObjectState.isClustered) {
+                        // ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), 'Содержимое балуна', {
+                            // closeButton: false,
                             // contentLayout: ymap.getLayout('node')
-                        });
+                        // });
                         // geoObjectState.cluster.state.set('activeObject', target);
                         // clusterer.balloon.open(geoObjectState.cluster);
-                    } else {
-                        target.balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)));
-                    }
-                }
+                    // } else {
+                        target.balloon.open();
+                    // }
+                // }
                 /*
                 try {
                     target.balloon.open();
@@ -173,13 +172,12 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
 
             function del (extProp) {
                 new popup.PopupDialog({
-                    title: 'Удалить объект?',
+                    title: `Удалить ${extProp.name || extProp.routeDescription || 'объект'}?`,
                     content: 'Объект станет недоступным. Действие нельзя будет отменить!',
-                    buttons: [{ id: 'primary', title: 'Удалить' }, { id: 'secondary', title: 'Отменить' }],
-                    listeners: [
-                        { id: 'primary', cb: e => { socket.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); } },
-                        { id: 'secondary' }
-                    ]
+                    buttons: {
+                        primary: { title: 'Удалить', cb: e => { socket.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); } },
+                        secondary: { title: 'Отменить', cb: e => { } }
+                    }
                 }).render().show();
             }
 
@@ -188,11 +186,10 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     new popup.PopupDialog({
                         title: 'Зафиксировать как узел?',
                         content: 'Новая точка соединения будет добавлена на карту.',
-                        buttons: [{ id: 'primary', title: 'Сохранить' }, { id: 'secondary', title: 'Отменить' }],
-                        listeners: [
-                            { id: 'primary', cb: e => { resolve(e); } },
-                            { id: 'secondary', cb: e => { reject(e); } }
-                        ]
+                        buttons: {
+                            primary: { title: 'Сохранить', cb: e => { resolve(e); } },
+                            secondary: { title: 'Отменить', cb: e => { reject(e); } }
+                        }
                     }).render().show();
                 });
                 prompt.then(() => {
@@ -245,11 +242,10 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     new popup.PopupDialog({
                         title: 'Сохранить изменения?',
                         content: 'Данные будут перезаписаны. Действия нельзя будет отменить!',
-                        buttons: [{ id: 'primary', title: 'Сохранить' }, { id: 'secondary', title: 'Отменить' }],
-                        listeners: [
-                            { id: 'primary', cb: e => { resolve(e); } },
-                            { id: 'secondary', cb: e => { reject(e); } }
-                        ]
+                        buttons: {
+                            primary: { title: 'Сохранить', cb: e => { resolve(e); } },
+                            secondary: { title: 'Отменить', cb: e => { reject(e); } }
+                        }
                     }).render().show();
                 });
             }

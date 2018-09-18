@@ -148,28 +148,16 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 extProp.editable = true;
                 if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
                 else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
-                let y = ymap;
-                // var clusterer = ymap.getObjectCluster();
-                // var geoObjectState = clusterer.getObjectState(target);
-                // if (geoObjectState.isShown) {
-                // if (geoObjectState.isClustered) {
-                // ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), 'Содержимое балуна', {
-                // closeButton: false,
-                // contentLayout: ymap.getLayout('node')
-                // });
-                // geoObjectState.cluster.state.set('activeObject', target);
-                // clusterer.balloon.open(geoObjectState.cluster);
-                // } else {
-                target.balloon.open();
-                // }
-                // }
-                /*
-                try {
-                    target.balloon.open();
-                } catch (e) {
-                    ymap.getMap().balloon.open(extProp.coordinates.split(',').map(i => parseFloat(i)), { content: 'loooser' }, {});
+                var clusterer = ymap.getObjectCluster();
+                var geoObjectState = clusterer.getObjectState(target);
+                if (geoObjectState.isShown) {
+                    if (geoObjectState.isClustered) {
+                        // FIX : balloon close catch
+                        ymap.getMap().balloon.open(target.geometry.getCoordinates(), { properties: { external: extProp } }, { closeButton: true, contentLayout: ymap.getLayout('node') });
+                    } else {
+                        target.balloon.open();
+                    }
                 }
-                */
             }
 
             function del (extProp) {

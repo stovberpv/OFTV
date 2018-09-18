@@ -38,7 +38,8 @@ define(['ymaps'], function (ymaps) {
                     {
                         build: function () {
                             this.constructor.superclass.build.call(this);
-                            let extProp = this.getData().properties.get('external');
+                            let extProp = this.getData().properties;
+                            try { extProp = extProp.get('external'); } catch (e) { extProp = extProp.external; }
                             Array.from(this.getElement().querySelectorAll('input')).forEach(i => {
                                 i.addEventListener('keyup', e => { extProp[e.target.name] = e.target.value; });
                                 extProp.editable

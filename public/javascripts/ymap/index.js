@@ -1,6 +1,7 @@
-define(['./ymap'], function (Ymap) {
+define(['./controller', './helper'], function (controller, Helper) {
     console.log('Ymap loaded');
     return {
-        Ymap: Ymap
+        controller: controller,
+        Helper: Helper
     };
 });

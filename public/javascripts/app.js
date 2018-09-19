@@ -34,7 +34,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
     function App () {
         let _eventBus = new utils.EventBus();
         let _socketHelper = socket.helper();
-        let _ymap = new ymap.Ymap();
+        let _map = ymap;
         let _node = node;
         let _route = route;
         let _popup = popup;
@@ -44,7 +44,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             let Route = _route.Route;
 
             function placemark (node) {
-                return _ymap.createPlacemark({
+                return _map.geoObjects.create.Placemark({
                     geometry: node.coordinates.get(),
                     properties: {
                         iconCaption: node.name.get(),
@@ -52,30 +52,30 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                         clusterCaption: node.name.get(),
                         external: node.toPrimitive()
                     },
-                    options: { balloonContentLayout: _ymap.getLayout('node') }
+                    options: { balloonContentLayout: _map.layout.get('node') }
                 });
             }
 
             function polyline (route) {
-                return _ymap.createPolyline({
+                return _map.geoObjects.create.Polyline({
                     geometry: route.coordinatePath.get(),
                     properties: {
                         hintContent: route.routeDescription.get() || route.cableDescription.get(),
                         external: route.toPrimitive()
                     },
-                    options: { balloonContentLayout: _ymap.getLayout('route') }
+                    options: { balloonContentLayout: _map.layout.get('route') }
                 });
             }
 
             return (networkResourceType, networkResourceObject) => {
                 (networkResourceType === 'node') && (() => {
-                    let clusterer = _ymap.getObjectCluster();
+                    let clusterer = _map.geoObjects.Clusterer;
                     let mapObject = placemark(new Node(networkResourceObject));
                     clusterer.getGeoObjects().forEach(o => { (o.properties.get('external').guid === mapObject.properties.get('external').guid) && clusterer.remove(o); });
                     !mapObject.properties.get('external').isDeprecated && clusterer.add(mapObject);
                 })();
                 (networkResourceType === 'route') && (() => {
-                    let collection = _ymap.getObjectCollection();
+                    let collection = _map.geoObjects.Collection;
                     let mapObject = polyline(new Route(networkResourceObject));
                     collection.each(o => { (o.properties.get('external').guid === mapObject.properties.get('external').guid) && collection.remove(o); });
                     !mapObject.properties.get('external').isDeprecated && collection.add(mapObject);
@@ -87,7 +87,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             let Node = _node.Node;
             let Route = _route.Route;
             let socket = _socketHelper;
-            let ymap = _ymap;
+            let ymap = _map;
             let popup = _popup;
             let target;
 
@@ -128,32 +128,32 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
 
             function check (extProp) {
                 extProp.routePoint = true;
-                ymap.getEditablePolyline().point.add({ id: extProp.guid, placemark: target }).render();
+                // ymap.getEditablePolyline().point.add({ id: extProp.guid, placemark: target }).render(); // TODO :
             }
 
             function uncheck (extProp) {
                 delete extProp.routePoint;
-                ymap.getEditablePolyline().point.del({ id: extProp.guid }).render();
+                // ymap.getEditablePolyline().point.del({ id: extProp.guid }).render(); // TODO :
             }
 
             function complete () {
-                let ep = ymap.getEditablePolyline();
-                let coordinatePath = ep.point.all();
-                ep.point.each(p => { delete p.properties.get('external').routePoint; });
-                ep.reset();
-                socket.emitNetworkResourcesCreate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
+                // let ep = ymap.getEditablePolyline(); // TODO :
+                // let coordinatePath = ep.point.all();
+                // ep.point.each(p => { delete p.properties.get('external').routePoint; });
+                // ep.reset();
+                // socket.emitNetworkResourcesCreate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
             }
 
             function update (extProp) {
                 extProp.editable = true;
                 if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
                 else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
-                var clusterer = ymap.getObjectCluster();
+                var clusterer = ymap.geoObjects.Clusterer;
                 var geoObjectState = clusterer.getObjectState(target);
                 if (geoObjectState.isShown) {
                     if (geoObjectState.isClustered) {
                         // FIX : balloon close catch
-                        ymap.getMap().balloon.open(target.geometry.getCoordinates(), { properties: { external: extProp } }, { closeButton: true, contentLayout: ymap.getLayout('node') });
+                        ymap.map.get().balloon.open(target.geometry.getCoordinates(), { properties: { external: extProp } }, { closeButton: true, contentLayout: ymap.layout.get('node') });
                     } else {
                         target.balloon.open();
                     }
@@ -275,19 +275,26 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
 
             await (() => { // initialize ymap
                 return new Promise(async (resolve, reject) => {
-                    try { await _ymap.load(); } catch (e) { reject(e); }
-                    _ymap.attachTo('map');
-                    _ymap.addLayout('route', _route.view.render());
-                    _ymap.addLayout('node', _node.view.render());
-                    _ymap.initializeObjectCluster();
-                    _ymap.initializeObjectCollection();
-                    _ymap.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
-                    _ymap.registerEditablePolyline({ properties: { type: 'route blueprint' } });
-                    _ymap.registerMapGlobalEvents();
-                    _ymap.getObjectCluster();
-                    _ymap.setGeoObjectEventHandler('contextmenu', _contextMenuHandler());
-                    _ymap.setGeoObjectEventHandler('balloonopen', _balloonOpenHandler());
-                    _ymap.setGeoObjectEventHandler('balloonclose', _balloonCloseHandler());
+                    try { _map = new _map.Helper(await _map.controller.load()); } catch (e) { reject(e); }
+                    _map.map.attach('map');
+                    _map.layout.set('route', _route.view.render());
+                    _map.layout.set('node', _node.view.render());
+                    _map.geoObjects.add(_map.geoObjects.Clusterer);
+                    _map.geoObjects.add(_map.geoObjects.Collection);
+                    // _map.initializeObjectCluster();
+                    // _map.initializeObjectCollection();
+                    _map.geoObjects.DraggablePlacemark.setProp({ type: 'node blueprint' });
+                    // _map.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
+                    // _map.registerEditablePolyline({ properties: { type: 'route blueprint' } }); // TODO :
+                    // _map.registerMapGlobalEvents();
+                    _map.map.events.click(e => { console.log(' TODO '); });
+                    // _map.getObjectCluster();
+                    _map.geoObjects.events.set('contextmenu', _contextMenuHandler());
+                    _map.geoObjects.events.set('balloonopen', _balloonOpenHandler());
+                    _map.geoObjects.events.set('balloonclose', _balloonCloseHandler());
+                    // _map.setGeoObjectEventHandler('contextmenu', _contextMenuHandler());
+                    // _map.setGeoObjectEventHandler('balloonopen', _balloonOpenHandler());
+                    // _map.setGeoObjectEventHandler('balloonclose', _balloonCloseHandler());
 
                     resolve();
                 });
@@ -296,7 +303,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             (() => { // data processing
                 _socketHelper.onNetworkResources(r => {
                     r.data.forEach(d => { _transposeDataOnMap(r.type, d); });
-                    _ymap.showBounds();
+                    _map.map.setBounds();
                 });
                 _socketHelper.emitNetworkResources({ type: 'node' });
                 _socketHelper.emitNetworkResources({ type: 'route' });

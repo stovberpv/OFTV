@@ -135,14 +135,11 @@ define([], function () {
                     if (_mark) return;
                     _mark = new ymaps.Placemark([], _properties, _options);
                     _mark.events.add('dragend', onDragged.bind(this));
-                    // _map.geoObjects.add(_mark); // TODO :
-                    return _mark;
+                    _map.geoObjects.add(_mark); // TODO :
+
+                    return this;
                 };
-                this.remove = () => {
-                    if (!_mark) return;
-                    // _map.geoObjects.remove(_mark); //  TODO :
-                    _mark = null;
-                };
+
                 this.move = function (coords) {
                     if (!_mark) return;
                     _mark.properties.set('iconCaption', '');
@@ -155,14 +152,27 @@ define([], function () {
                         _mark.properties.set({ hintContent: hintContent, iconCaption: '' });
                     }).catch(e => { });
                 };
+
+                this.remove = () => {
+                    if (!_mark) return;
+                    _map.geoObjects.remove(_mark); //  TODO :
+                    _mark = null;
+                };
+
                 this.setProp = prop => { _properties.external = prop; };
 
                 return this;
             }(),
-            EditablePolyline: (function EditablePolyline () { // TODO :
-                /*
+            EditablePolyline: new function EditablePolyline () {
                 let _polyline = null;
                 let _points = {};
+                let _properties = { external: {} };
+                let _options = {
+                    strokeColor: ['FFF', 'FFE100'], // F4425F
+                    strokeOpacity: [0.85, 1],
+                    strokeStyle: ['1 0', '1 2'], // Первая цифра - длина штриха. Вторая - длина разрыва.
+                    strokeWidth: [6, 4]
+                };
 
                 function getCoordinates () {
                     let coordinates = [];
@@ -177,31 +187,34 @@ define([], function () {
                     all: () => getCoordinates()
                 };
 
-                this.reset = () => { _points = {}; _polyline.geometry.setCoordinates([]); return this; };
-
-                this.render = () => {
-                    if (Object.keys(_points).length === 0) return;
+                this.create = () => {
                     if (!_polyline) {
-                        _polyline = new ym.Polyline(getCoordinates(),
-                            {
-                                external: {}
-                            }, {
-                                strokeColor: ['FFF', 'FFE100'], // F4425F
-                                strokeOpacity: [0.85, 1],
-                                strokeStyle: ['1 0', '1 2'], // Первая цифра - длина штриха. Вторая - длина разрыва.
-                                strokeWidth: [6, 4]
-                            });
-                        // map.geoObjects.add(_polyline);
+                        _polyline = new ymaps.Polyline(getCoordinates(), _properties, _options);
+                        _map.geoObjects.add(_polyline);
                     }
 
+                    return this;
+                };
+
+                this.move = () => {
+                    if (Object.keys(_points).length === 0) return;
                     _polyline.geometry.setCoordinates(getCoordinates());
 
                     return this;
                 };
 
+                this.remove = () => {
+                    if (!_polyline) return;
+                    _points = {};
+                    _polyline.geometry.setCoordinates([]);
+                    _map.geoObjects.remove(_polyline);
+                    _polyline = null;
+                };
+
+                this.setProp = prop => { _properties.external = prop; };
+
                 return this;
-                */
-            })(),
+            }(),
             create: {
                 object: function (opts) {
                     let properties = content => {

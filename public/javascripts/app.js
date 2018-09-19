@@ -39,10 +39,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
         let _route = route;
         let _popup = popup;
 
-        let _transposeDataOnMap = (() => {
-            let Node = _node.Node;
-            let Route = _route.Route;
-
+        let _transposeDataOnMap = (function transposeDataOnMap () {
             function placemark (node) {
                 return _map.geoObjects.create.Placemark({
                     geometry: node.coordinates.get(),
@@ -67,28 +64,23 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 });
             }
 
-            return (networkResourceType, networkResourceObject) => {
+            return function (networkResourceType, networkResourceObject) {
                 (networkResourceType === 'node') && (() => {
                     let clusterer = _map.geoObjects.Clusterer;
-                    let mapObject = placemark(new Node(networkResourceObject));
+                    let mapObject = placemark(new _node.Node(networkResourceObject));
                     clusterer.getGeoObjects().forEach(o => { (o.properties.get('external').guid === mapObject.properties.get('external').guid) && clusterer.remove(o); });
                     !mapObject.properties.get('external').isDeprecated && clusterer.add(mapObject);
                 })();
                 (networkResourceType === 'route') && (() => {
                     let collection = _map.geoObjects.Collection;
-                    let mapObject = polyline(new Route(networkResourceObject));
+                    let mapObject = polyline(new _route.Route(networkResourceObject));
                     collection.each(o => { (o.properties.get('external').guid === mapObject.properties.get('external').guid) && collection.remove(o); });
                     !mapObject.properties.get('external').isDeprecated && collection.add(mapObject);
                 })();
             };
         })();
 
-        let _contextMenuHandler = () => {
-            let Node = _node.Node;
-            let Route = _route.Route;
-            let socket = _socketHelper;
-            let ymap = _map;
-            let popup = _popup;
+        let _contextMenuHandler = function () {
             let target;
 
             function createContextmenuList (prop) {
@@ -107,7 +99,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 return new Promise((resolve, reject) => {
                     if (target.options.getName() === 'cluster') {
                         let geoObj = [];
-                        new popup.PopupWithSelection({
+                        new _popup.PopupWithSelection({
                             title: 'Выбор объекта',
                             content: 'Возможна только поэлементная обработка. Выберите один элемент из списка.',
                             selectionList: target.getGeoObjects().map((o, i) => {
@@ -128,64 +120,68 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
 
             function check (extProp) {
                 extProp.routePoint = true;
-                // ymap.getEditablePolyline().point.add({ id: extProp.guid, placemark: target }).render(); // TODO :
+                _map.geoObjects.EditablePolyline.point.add({ id: extProp.guid, placemark: target }).create().move();
             }
 
             function uncheck (extProp) {
                 delete extProp.routePoint;
-                // ymap.getEditablePolyline().point.del({ id: extProp.guid }).render(); // TODO :
+                _map.geoObjects.EditablePolyline.point.del({ id: extProp.guid }).move();
             }
 
             function complete () {
-                // let ep = ymap.getEditablePolyline(); // TODO :
-                // let coordinatePath = ep.point.all();
-                // ep.point.each(p => { delete p.properties.get('external').routePoint; });
-                // ep.reset();
-                // socket.emitNetworkResourcesCreate(new Route({ coordinatePath: coordinatePath }).toPrimitive());
+                let ep = _map.geoObjects.EditablePolyline;
+                let coordinatePath = ep.point.all();
+                ep.point.each(p => { delete p.properties.get('external').routePoint; });
+                ep.remove();
+                _socketHelper.emitNetworkResourcesCreate(new _route.Route({ coordinatePath: coordinatePath }).toPrimitive());
             }
 
             function update (extProp) {
                 extProp.editable = true;
                 if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
                 else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
-                var clusterer = ymap.geoObjects.Clusterer;
+                var clusterer = _map.geoObjects.Clusterer;
                 var geoObjectState = clusterer.getObjectState(target);
-                if (geoObjectState.isShown) {
-                    if (geoObjectState.isClustered) {
-                        // FIX : balloon close catch
-                        ymap.map.get().balloon.open(target.geometry.getCoordinates(), { properties: { external: extProp } }, { closeButton: true, contentLayout: ymap.layout.get('node') });
-                    } else {
-                        target.balloon.open();
+                if (geoObjectState.cluster === null) {
+                    target.balloon.open();
+                } else {
+                    if (geoObjectState.isShown) {
+                        if (geoObjectState.isClustered) {
+                            // FIX : balloon close catch
+                            _map.map.get().balloon.open(target.geometry.getCoordinates(), { properties: { external: extProp } }, { closeButton: true, contentLayout: _map.layout.get('node') });
+                        } else {
+                            target.balloon.open();
+                        }
                     }
                 }
             }
 
             function del (extProp) {
-                new popup.PopupDialog({
+                new _popup.PopupDialog({
                     title: `Удалить ${extProp.name || extProp.routeDescription || 'объект'}?`,
                     content: 'Объект станет недоступным. Действие нельзя будет отменить!',
                     buttons: {
-                        primary: { title: 'Удалить', cb: e => { socket.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); } },
+                        primary: { title: 'Удалить', cb: e => { _socketHelper.emitNetworkResourcesRemove({ type: extProp.type, guid: extProp.guid }); } },
                         secondary: { title: 'Отменить', cb: e => { } }
                     }
                 }).render().show();
             }
 
             function fix () {
-                new popup.PopupDialog({
+                new _popup.PopupDialog({
                     title: 'Зафиксировать как узел?',
                     content: 'Новая точка соединения будет добавлена на карту.',
                     buttons: {
-                        primary: { title: 'Сохранить', cb: e => { socket.emitNetworkResourcesCreate(new Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive()); } },
+                        primary: { title: 'Сохранить', cb: e => { _socketHelper.emitNetworkResourcesCreate(new _node.Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive()); } },
                         secondary: { title: 'Отменить', cb: e => { } }
                     }
                 }).render().show();
             }
 
-            return async e => {
+            return async function (e) {
                 try { target = await getTarget(e.get('target')); } catch (e) { return; }
                 let extProp = target.properties.get('external');
-                new popup.ContextMenu({
+                new _popup.ContextMenu({
                     list: createContextmenuList(extProp),
                     xy: e.get('pagePixels'),
                     cb: clicked => {
@@ -203,65 +199,51 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             };
         };
 
-        let _balloonOpenHandler = () => {
-            let Node = _node.Node;
-            let Route = _route.Route;
-            let socket = _socketHelper;
-
-            async function getNetworkResources (o) {
+        let _balloonOpenHandler = (function () {
+            function getNetworkResources (o) {
                 let extProp = o.properties.get('external');
                 if (!['node', 'route'].includes(extProp.type)) return;
-                socket.emit('network resource read', { type: extProp.type, guid: extProp.guid }, r => {
-                    let data = (extProp.type === 'node') ? new Node(r) : ((extProp.type === 'route') && new Route(r));
+                _socketHelper.emit('network resource read', { type: extProp.type, guid: extProp.guid }, r => {
+                    let data = (extProp.type === 'node') ? new _node.Node(r) : ((extProp.type === 'route') && new _route.Route(r));
                     Object.assign(extProp, data.toPrimitive());
                 });
             }
 
             return e => { (e.get('cluster') ? e.get('cluster').getGeoObjects() : [e.get('target')]).forEach(o => { getNetworkResources(o); }); };
-        };
+        })();
 
-        let _balloonCloseHandler = () => {
-            let Node = _node.Node;
-            let Route = _route.Route;
-            let popup = _popup;
-            let socket = _socketHelper;
-
-            return async e => {
-                if (e.get('cluster')) return;
-                let target = e.get('target');
-                let extProp = target.properties.get('external');
-                if (!extProp.editable) return;
-                new popup.PopupDialog({
-                    title: `Сохранить изменения ${extProp.name || extProp.routeDescription || ''}?`,
-                    content: 'Данные будут перезаписаны. Действия нельзя будет отменить!',
-                    buttons: {
-                        primary: {
-                            title: 'Сохранить',
-                            cb: e => {
-                                extProp.editable = false;
-                                if (extProp.type === 'node') {
-                                    socket.emitNetworkResourcesUpdate(new Node(extProp).toPrimitive());
-                                    target.options.set('iconColor', '#F4425F');
-                                } else if (extProp.type === 'route') {
-                                    socket.emitNetworkResourcesUpdate(new Route(extProp).toPrimitive());
-                                    target.options.set('strokeColor', '#F4425F');
-                                }
-                            }
-                        },
-                        secondary: {
-                            title: 'Отменить',
-                            cb: e => {
-                                extProp.editable = false;
-                                if (extProp.type === 'node') {
-                                    target.options.set('iconColor', '#F4425F');
-                                } else if (extProp.type === 'route') {
-                                    target.options.set('strokeColor', '#F4425F');
-                                }
+        let _balloonCloseHandler = function (e) {
+            if (e.get('cluster')) return;
+            let target = e.get('target');
+            let extProp = target.properties.get('external');
+            if (!extProp.editable) return;
+            new _popup.PopupDialog({
+                title: `Сохранить изменения ${extProp.name || extProp.routeDescription || ''}?`,
+                content: 'Данные будут перезаписаны. Действия нельзя будет отменить!',
+                buttons: {
+                    primary: {
+                        title: 'Сохранить',
+                        cb: e => {
+                            extProp.editable = false;
+                            if (extProp.type === 'node') {
+                                _socketHelper.emitNetworkResourcesUpdate(new _node.Node(extProp).toPrimitive());
+                                target.options.set('iconColor', '#F4425F');
+                            } else if (extProp.type === 'route') {
+                                _socketHelper.emitNetworkResourcesUpdate(new _route.Route(extProp).toPrimitive());
+                                target.options.set('strokeColor', '#F4425F');
                             }
                         }
+                    },
+                    secondary: {
+                        title: 'Отменить',
+                        cb: e => {
+                            extProp.editable = false;
+                            if (extProp.type === 'node') target.options.set('iconColor', '#F4425F');
+                            else if (extProp.type === 'route') target.options.set('strokeColor', '#F4425F');
+                        }
                     }
-                }).render().show();
-            };
+                }
+            }).render().show();
         };
 
         this.run = async () => {
@@ -281,20 +263,12 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     _map.layout.set('node', _node.view.render());
                     _map.geoObjects.add(_map.geoObjects.Clusterer);
                     _map.geoObjects.add(_map.geoObjects.Collection);
-                    // _map.initializeObjectCluster();
-                    // _map.initializeObjectCollection();
                     _map.geoObjects.DraggablePlacemark.setProp({ type: 'node blueprint' });
-                    // _map.registerDraggablePlacemark({ properties: { type: 'node blueprint' } });
-                    // _map.registerEditablePolyline({ properties: { type: 'route blueprint' } }); // TODO :
-                    // _map.registerMapGlobalEvents();
+                    _map.geoObjects.EditablePolyline.setProp({ type: 'route blueprint' });
                     _map.map.events.click(e => { console.log(' TODO '); });
-                    // _map.getObjectCluster();
                     _map.geoObjects.events.set('contextmenu', _contextMenuHandler());
-                    _map.geoObjects.events.set('balloonopen', _balloonOpenHandler());
-                    _map.geoObjects.events.set('balloonclose', _balloonCloseHandler());
-                    // _map.setGeoObjectEventHandler('contextmenu', _contextMenuHandler());
-                    // _map.setGeoObjectEventHandler('balloonopen', _balloonOpenHandler());
-                    // _map.setGeoObjectEventHandler('balloonclose', _balloonCloseHandler());
+                    _map.geoObjects.events.set('balloonopen', _balloonOpenHandler);
+                    _map.geoObjects.events.set('balloonclose', _balloonCloseHandler);
 
                     resolve();
                 });
@@ -310,9 +284,6 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 _socketHelper.onNetworkResourcesCreated(r => { _transposeDataOnMap(r.type, r.data); });
                 _socketHelper.onNetworkResourcesUpdated(r => { _transposeDataOnMap(r.type, r.data); });
                 _socketHelper.onNetworkResourcesRemoved(r => { _transposeDataOnMap(r.type, r.data); });
-            })();
-
-            (() => { // post config
             })();
         };
 

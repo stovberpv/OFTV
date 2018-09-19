@@ -101,12 +101,14 @@ define(['utils/index'], function (utils) {
             return `
                 <div id='popup-${_id}' class='popup-wrapper popup dialog-with-selection'>
                     <div class='container'>
-                        <div class='title'>${_title}</div>
-                        <div class='content'>${_content}</div>
+                        <div class='title'><span>${_title}</span></div>
+                        <div class='content'><span>${_content}</span></div>
                         <div class='selection-list'>
-                            <ul>
-                                ${_selectionList.reduce((p, c) => `${p}<div class='list-element' id='${c.id}'><span></span><li>${c.title}</li></div>`, '')}
-                            </ul>
+                            ${_selectionList.reduce((p, c) => `
+                                ${p}<div class='list-element' data-id='${c.id}'>
+                                    <span class='checkbox'></span>
+                                    <span class='text'>${c.title}</span>
+                                </div>`, '')}
                         </div>
                         <div class='controls'>
                             <div id='primary' class='button'>${_buttons.primary.title || 'Кнопка 1'}</div>
@@ -126,13 +128,13 @@ define(['utils/index'], function (utils) {
                 let selectedElements = _layout.querySelectorAll('.selected');
                 if (selectedElements.length === 0) return;
                 self.close();
-                _buttons.primary.cb && _buttons.primary.cb(e.target.id, Array.from(selectedElements).map(e => { return e.id; }));
+                _buttons.primary.cb && _buttons.primary.cb(e.target, Array.from(selectedElements).map(e => { return e.dataset.id; }));
             });
             _layout.querySelector(`#secondary`).addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 self.close();
-                _buttons.secondary.cb && _buttons.secondary.cb(e.target.id);
+                _buttons.secondary.cb && _buttons.secondary.cb(e.target);
             });
 
             Array.from(_layout.querySelectorAll('div.list-element')).forEach(div => {

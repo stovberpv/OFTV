@@ -192,49 +192,67 @@ span {
 /* #region popup dialog-with-selection */
 
 .popup-wrapper.dialog-with-selection .container {
-    min-height: 200px;
     height: auto;
-    grid-template-rows: repeat(4, auto);
+    min-height: 10vh;
+    max-height: 50vh;
+    grid-template-rows: 20px auto auto 35px;
+    grid-row-gap: 10px;
 }
 
 .popup-wrapper.dialog-with-selection .selection-list {
     grid-row: 3;
-    list-style-type: none;
-}
-
-.popup-wrapper.dialog-with-selection .selection-list ul {
     color: rgba(var(--vulcan), .8);
     font-size: .9rem;
-    margin: 0 0 0 20px;
+    justify-self: center;
+    align-self: stretch;
+    overflow-y: auto;
+    margin: 0;
+}
+
+.popup-wrapper.dialog-with-selection .selection-list .list-element {
+    position: relative;
+    cursor: pointer;
+    text-align: left;
+    margin: 10px 0;
     padding: 0;
 }
 
-.popup-wrapper.dialog-with-selection .selection-list ul div {
-    position: relative;
-    cursor: pointer;
-}
-
-.popup-wrapper.dialog-with-selection .selection-list ul div li {
-    list-style: none;
-    margin: 10px 0;
+.popup-wrapper.dialog-with-selection .selection-list .list-element .text {
     text-align: left;
+    margin: 0 0 0 25px;
+    border-radius: 3px;
+    padding: 5px;
+    transition: all .3s;
 }
 
-.popup-wrapper.dialog-with-selection .selection-list ul div span {
+.popup-wrapper.dialog-with-selection .selection-list .list-element .checkbox {
     border: 1px solid rgba(var(--vulcan), .5);
-    width: .9rem;
-    height: .9rem;
+    width: 15px;
+    height: 15px;
     position: absolute;
+    left: 0px;
     top: 50%;
-    left: -25px;
     transform: translatey(-50%);
     border-radius: 3px;
     transition: all .3s;
 }
 
-.popup-wrapper.dialog-with-selection .selection-list ul div.selected span {
-    border-color: transparent;
+.popup-wrapper.dialog-with-selection .selection-list .list-element.selected .text {
     background-color: rgba(var(--carnation), 1);
+    color: rgba(var(--white), 1);
+}
+
+.popup-wrapper.dialog-with-selection .selection-list .list-element.selected .checkbox {
+    /* border-color: transparent; */
+    /* background-color: rgba(var(--carnation), 1); */
+    background-color: transparent;
+    border-color: rgba(var(--carnation), 1);
+    border: 1px solid rgba(var(--carnation), 1);
+    border-top: none;
+    border-right: none;
+    transform: rotate(-45deg) translate(30%, -40%);
+    border-radius: 0;
+    height: 5px;
 }
 
 .popup-wrapper.dialog-with-selection .controls {

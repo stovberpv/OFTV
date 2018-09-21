@@ -14,33 +14,6 @@ define([], function () {
             setBounds: function () {
                 let bounds = _map.geoObjects.getBounds();
                 bounds && _map.setBounds(bounds, { checkZoomRange: true });
-            },
-            events: {
-                click: function (cb) { // TODO : graggablePlacemark.bind(this)
-                    // function graggablePlacemark (e) { _draggblePlacemark.move(e.get('coords')); }
-                    _map.events.add('click', cb);
-                }
-            },
-            registerCustomControls: function (opts) {
-                let button = new ymaps.control.Button({
-                    data: {
-                        content: opts.data.content || '',
-                        image: opts.data.image || '',
-                        title: opts.data.title || ''
-                    },
-                    options: {
-                        maxWidth: opts.options.maxWidth || 150,
-                        float: opts.options.float || 'left',
-                        visible: opts.options.visible || true
-                    },
-                    state: {
-                        enabled: opts.state.enabled || true
-                    }
-                });
-
-                button.events.add('press', opts.cb);
-
-                _map.controls.add(button);
             }
         };
 
@@ -69,6 +42,20 @@ define([], function () {
         };
 
         this.geoObjects = {
+            Manager: (function Manager () {
+                let _objectManager = new ymaps.ObjectManager({
+                    clusterize: true,
+                    clusterHasBalloon: false,
+                    geoObjectOpenBalloonOnClick: false
+                });
+                _objectManager.clusters.options.set({
+                    iconColor: '#F4425F',
+                    preset: 'islands#glyphCircleIcon'
+                });
+                _objectManager.objects.options.set('preset', 'islands#grayIcon');
+
+                return _objectManager;
+            })(),
             Clusterer: (function Clusterer () {
                 let options = () => {
                     let clusterIconContentLayout = ymaps.templateLayoutFactory.createClass(
@@ -97,28 +84,6 @@ define([], function () {
 
                 return new ymaps.Clusterer(options());
             })(),
-            Manager: (function Manager () {
-                let _objectManager = new ymaps.ObjectManager({
-                    clusterize: true,
-                    clusterHasBalloon: false,
-                    geoObjectOpenBalloonOnClick: false
-                });
-                _objectManager.clusters.options.set({
-                    iconColor: '#F4425F',
-                    preset: 'islands#glyphCircleIcon'
-                });
-                _objectManager.objects.options.set('preset', 'islands#grayIcon');
-
-                let getManager = () => { return _objectManager; };
-                let addObject = object => { _objectManager.add(object); };
-                let setEvent = (event, cb) => { _objectManager.objects.events.add(event, cb); };
-
-                return {
-                    getManager: getManager,
-                    addObject: addObject,
-                    setEvent: setEvent
-                };
-            })(),
             Collection: (function Collection () {
                 let options = () => {
                     return [];
@@ -127,24 +92,32 @@ define([], function () {
             })(),
             DraggablePlacemark: new function DraggablePlacemark () {
                 let _mark = null;
+                let _coords = null;
                 let _properties = { iconCaption: 'Поиск адреса...', iconContent: '', external: {} };
                 let _options = { iconColor: '#FFE100', preset: 'islands#redCircleDotIconWithCaption', draggable: true }; // blueStretchyIcon DotIconWithCaption
-                let onDragged = function (e) { this.move(e.originalEvent.target.geometry.getCoordinates()); };
+                let onDragged = function (e) { this.setCoords(e.originalEvent.target.geometry.getCoordinates()).move(); };
 
-                this.create = () => {
-                    if (_mark) return;
-                    _mark = new ymaps.Placemark([], _properties, _options);
-                    _mark.events.add('dragend', onDragged.bind(this));
-                    _map.geoObjects.add(_mark); // TODO :
+                this.setCoords = coords => {
+                    _coords = coords;
 
                     return this;
                 };
 
-                this.move = function (coords) {
+                this.create = () => {
+                    if (!_mark) {
+                        _mark = new ymaps.Placemark(_coords, _properties, _options);
+                        _mark.events.add('dragend', onDragged.bind(this));
+                        _map.geoObjects.add(_mark);
+                    }
+
+                    return this;
+                };
+
+                this.move = function () {
                     if (!_mark) return;
                     _mark.properties.set('iconCaption', '');
-                    _mark.geometry.setCoordinates([coords[0], coords[1]]);
-                    ymaps.geocode([coords[0], coords[1]]).then(r => {
+                    _mark.geometry.setCoordinates([_coords[0], _coords[1]]);
+                    ymaps.geocode([_coords[0], _coords[1]]).then(r => {
                         let geo = r.geoObjects.get(0);
                         let city = geo.getLocalities()[0];
                         let street = geo.getThoroughfare() || geo.getPremise() || '';
@@ -155,7 +128,7 @@ define([], function () {
 
                 this.remove = () => {
                     if (!_mark) return;
-                    _map.geoObjects.remove(_mark); //  TODO :
+                    _map.geoObjects.remove(_mark);
                     _mark = null;
                 };
 
@@ -216,44 +189,6 @@ define([], function () {
                 return this;
             }(),
             create: {
-                object: function (opts) {
-                    let properties = content => {
-                        let data = {
-                            iconCaption: content.iconCaption ? content.iconCaption : null,
-                            hintContent: content.hintContent ? content.hintContent : null,
-                            balloonContent: content.balloonContent ? content.balloonContent : null,
-                            balloonContentHeader: content.balloonContentHeader ? content.balloonContentHeader : null,
-                            balloonContentBody: content.balloonContentBody ? content.balloonContentBody : null,
-                            balloonContentFooter: content.balloonContentFooter ? content.balloonContentFooter : null,
-                            balloonContentLayout: content.balloonContentLayout ? ymaps.templateLayoutFactory.createClass(content.balloonContentLayout) : null,
-                            clusterCaption: content.clusterCaption ? content.clusterCaption : null,
-                            external: content.external ? content.external : {}
-                        };
-
-                        for (let k in data) if (!data[k]) delete data[k];
-
-                        return new ymaps.data.Manager(data);
-                    };
-
-                    let options = () => {
-                        return {
-                            iconColor: '#F4425F',
-                            preset: 'islands#glyphCircleIcon',
-                            iconCaptionMaxWidth: '150'
-                        };
-                    };
-
-                    return {
-                        type: 'Feature',
-                        id: opts.id,
-                        geometry: {
-                            type: opts.type,
-                            coordinates: opts.geometry
-                        },
-                        properties: properties(opts.content),
-                        options: options()
-                    };
-                },
                 Polyline: function (opts) {
                     let properties = (properties => {
                         let data = {
@@ -330,88 +265,6 @@ define([], function () {
             },
             get: function (index) {
                 return index ? _map.geoObjects.get(index) : _map.geoObjects;
-            },
-            find: function (object) {
-                let index = null;
-                let isFound = {
-                    status: false,
-                    parent: null,
-                    index: null
-                };
-
-                index = _map.geoObjects.indexOf(object);
-                if (index !== -1) {
-                    isFound.status = true;
-                    isFound.parent = _map.geoObjects;
-                    isFound.index = index;
-                } else {
-                    let objectCount = _map.geoObjects.getLength();
-                    for (let i = 0; i < objectCount; i++) {
-                        let geoObject = _map.geoObjects.get(i);
-                        if (geoObject.options.getName() === 'clusterer') {
-                            index = geoObject.getGeoObjects().indexOf(object);
-                            if (index !== -1) {
-                                isFound.status = true;
-                                isFound.parent = geoObject;
-                                isFound.index = index;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                return isFound;
-            },
-            getIndex: function (object) {
-                return _map.geoObjects.indexOf(object);
-            },
-            getByName: function (opts) {
-                let objectCount = _map.geoObjects.getLength();
-                for (let i = 0; i < objectCount; i++) {
-                    let geoObject = _map.geoObjects.get(i);
-                    if (geoObject.options.getName() === opts.name) { return geoObject; }
-                }
-            },
-            getByExternalProperty: function (opts) {
-                let isFound = {
-                    status: false,
-                    parent: null,
-                    child: null
-                };
-                let objectValue;
-                let objectCount = _map.geoObjects.getLength();
-                for (let i = 0; i < objectCount; i++) {
-                    let geoObject = _map.geoObjects.get(i);
-
-                    if (geoObject.options.getName() === 'clusterer') {
-                        let objectCount = geoObject.getGeoObjects().length;
-                        for (let i = 0; i < objectCount; i++) {
-                            let clusteredGeoObject = geoObject.getGeoObjects()[i];
-                            try { objectValue = clusteredGeoObject.properties.get('external')[opts.property]; } catch (e) { continue; }
-                            if (objectValue === opts.value) {
-                                isFound.status = true;
-                                isFound.parent = geoObject;
-                                isFound.child = clusteredGeoObject;
-                                break;
-                            }
-                        }
-                    } else if (geoObject.options.getName() === 'geoObject') {
-                        try { objectValue = geoObject.properties.get('external')[opts.property]; } catch (e) { continue; }
-                        if (objectValue === opts.value) {
-                            isFound.status = true;
-                            isFound.parent = _map.geoObjects;
-                            isFound.child = geoObject;
-                            break;
-                        }
-                    }
-                }
-
-                return isFound;
-            },
-            events: {
-                set: function (event, cb) {
-                    _map.geoObjects.events.add(event, cb);
-                }
             }
         };
 

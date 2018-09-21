@@ -21,7 +21,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                 5.      ContextMenu не использовать await. вместо него - callback
                 6.      Трасса зафиксировать не отображаться если точкаодна
         NOTE :
-                1.
+                1.      Подумать над реализацией через ObjectManager https://tech.yandex.ru/maps/doc/jsapi/2.1/ref/reference/ObjectManager-docpage/
                 2.
                 3.
         DEBUG :
@@ -39,7 +39,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
         let _route = route;
         let _popup = popup;
 
-        let _transposeDataOnMap = (function transposeDataOnMap () {
+        let _transposeDataOnMap = (function () {
             function placemark (node) {
                 return _map.geoObjects.create.Placemark({
                     geometry: node.coordinates.get(),
@@ -80,7 +80,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             };
         })();
 
-        let _contextMenuHandler = function () {
+        let _contextMenuHandler = (function () {
             let target;
 
             function createContextmenuList (prop) {
@@ -197,7 +197,7 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     }
                 }).render().show();
             };
-        };
+        })();
 
         let _balloonOpenHandler = (function () {
             function getNetworkResources (o) {
@@ -265,10 +265,10 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     _map.geoObjects.add(_map.geoObjects.Collection);
                     _map.geoObjects.DraggablePlacemark.setProp({ type: 'node blueprint' });
                     _map.geoObjects.EditablePolyline.setProp({ type: 'route blueprint' });
-                    _map.map.events.click(e => { console.log(' TODO '); });
-                    _map.geoObjects.events.set('contextmenu', _contextMenuHandler());
-                    _map.geoObjects.events.set('balloonopen', _balloonOpenHandler);
-                    _map.geoObjects.events.set('balloonclose', _balloonCloseHandler);
+                    _map.map.get().geoObjects.events.add('contextmenu', _contextMenuHandler);
+                    _map.map.get().geoObjects.events.add('balloonopen', _balloonOpenHandler);
+                    _map.map.get().geoObjects.events.add('balloonclose', _balloonCloseHandler);
+                    _map.map.get().events.add('click', e => { _map.geoObjects.DraggablePlacemark.setCoords(e.get('coords')).create().move(); });
 
                     resolve();
                 });

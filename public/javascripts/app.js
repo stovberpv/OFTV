@@ -3,33 +3,31 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
 
     /*
         TODO :
-                1.      Две точки с одинаковыми координатами - придумать реализацию, не сохранять или сохранять но как тогда удалять?
-                2.      При построении маршрута трассы, если последняя точка != начальная - позволять начальную точку добавить в маршрут
-                3. +    _socket.routes.emitNetworkResources Обработать ресурсы
-                4. +    _socket.routes запрос, обновление, удаление ресурсов
-                5.      удалять draggableplacemark после сохранения
-                6. +    _socket.routes.onNetworkResourcesUpdated();
-                7. +    _socket.routes.onNetworkResourcesRemoved();
-                8. +    Возможность редактировать только для edited
-                9.      ContextMenu закрывать по Esc
-                10.     ContextMenu выводить имя точки
+                1.  + Две точки с одинаковыми координатами - придумать реализацию, не сохранять или сохранять но как тогда удалять?
+                2.    При построении маршрута трассы, если последняя точка != начальная - позволять начальную точку добавить в маршрут
+                3.    "Трасса зафиксировать" не отображать если точка одна
+                4.  + _socket.routes.emitNetworkResources Обработать ресурсы
+                5.  + _socket.routes запрос, обновление, удаление ресурсов
+                6.  + удалять draggableplacemark после сохранения
+                7.  + _socket.routes.onNetworkResourcesUpdated();
+                8.  + _socket.routes.onNetworkResourcesRemoved();
+                9.  + Возможность редактировать только для edited
+                10. + ContextMenu закрывать по Esc
+                11. + ContextMenu выводить имя точки
         FIX :
-                1.      ymaps не отображается searchControlProvider
-                2. +    _ymap.showBounds(); вызывать после загрузки всех ресурсов по сокету
-                3.      Кнопка множественного выбора должна быть недоступна если не выбран ни один из элементов списка
-                4. +    ContextMenu закрывать предыдущее
-                5.      ContextMenu не использовать await. вместо него - callback
-                6.      Трасса зафиксировать не отображаться если точкаодна
+                1.  + ymaps не отображается searchControlProvider
+                2.  + _ymap.showBounds(); вызывать после загрузки всех ресурсов по сокету
+                3.  + Кнопка множественного выбора должна быть недоступна если не выбран ни один из элементов списка
+                4.  + ContextMenu закрывать предыдущее
+                5.  + ContextMenu не использовать await. вместо него - callback
         NOTE :
-                1.      Подумать над реализацией через ObjectManager https://tech.yandex.ru/maps/doc/jsapi/2.1/ref/reference/ObjectManager-docpage/
-                2.
-                3.
+                1.    Подумать над реализацией через ObjectManager https://tech.yandex.ru/maps/doc/jsapi/2.1/ref/reference/ObjectManager-docpage/
         DEBUG :
-                1. +    _contextMenuHandler после реализации серверной части
-                2. +    _balloonOpenHandler после реализации серверной части
-                3. +    _balloonCloseHandler после реализации серверной части
-                4. +    Сохранение маршрута
-                5. +    Сохранение точки
+                1.  + _contextMenuHandler после реализации серверной части
+                2.  + _balloonOpenHandler после реализации серверной части
+                3.  + _balloonCloseHandler после реализации серверной части
+                4.  + Сохранение маршрута
+                5.  + Сохранение точки
     */
     function App () {
         let _eventBus = new utils.EventBus();
@@ -172,7 +170,10 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
                     title: 'Зафиксировать как узел?',
                     content: 'Новая точка соединения будет добавлена на карту.',
                     buttons: {
-                        primary: { title: 'Сохранить', cb: e => { _socketHelper.emitNetworkResourcesCreate(new _node.Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive()); } },
+                        primary: { title: 'Сохранить', cb: e => {
+                            _socketHelper.emitNetworkResourcesCreate(new _node.Node({ coordinates: target.geometry.getCoordinates() }).toPrimitive());
+                            _map.geoObjects.DraggablePlacemark.remove();
+                        } },
                         secondary: { title: 'Отменить', cb: e => { } }
                     }
                 }).render().show();
@@ -252,7 +253,10 @@ define(['socket/index', 'ymap/index', 'node/index', 'route/index', 'utils/index'
             })();
 
             (() => { // initialize socket
-                _socketHelper.onConnect(() => { console.log('Established socket connection with a server'); });
+                _socketHelper.onConnect(() => {
+                    console.log('Established socket connection with a server');
+                    _socketHelper.emit('authentication', {username: "John", password: "secret"});
+                });
             })();
 
             await (() => { // initialize ymap

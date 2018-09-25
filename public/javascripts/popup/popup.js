@@ -20,15 +20,14 @@ define(['utils/index'], function (utils) {
         let isDraggable = opts.isDraggable || true;
 
         function layout () {
-            // ${_buttons.reduce((p, c) => `${p}<div class='button ${c.id}'>${c.title}</div>`, '')}
             return `
                 <div id='popup-${_id}' class='popup-wrapper popup dialog'>
                     <div class='container'>
                         <div class='title'>${_title}</div>
                         <div class='content'>${_content}</div>
                         <div class='controls'>
-                            <div id='primary' class='button'>${_buttons.primary.title || 'Кнопка 1'}</div>
-                            <div id='secondary' class='button'>${_buttons.secondary.title || 'Кнопка 2'}</div>
+                            <button id='primary'>${_buttons.primary.title || 'Кнопка 1'}</button>
+                            <button id='secondary'>${_buttons.secondary.title || 'Кнопка 2'}</button>
                         </div>
                     </div>
                 </div>`.replace(/\s\s+/gmi, '');
@@ -38,14 +37,14 @@ define(['utils/index'], function (utils) {
             if (!_layout) return;
             let self = this;
 
-            _layout.querySelector(`#primary`).addEventListener('click', e => {
+            _layout.querySelector(`button#primary`).addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 self.close();
                 _buttons.primary.cb && _buttons.primary.cb(e.target.id);
             });
 
-            _layout.querySelector(`#secondary`).addEventListener('click', e => {
+            _layout.querySelector(`button#secondary`).addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 self.close();
@@ -80,7 +79,6 @@ define(['utils/index'], function (utils) {
 
         this.close = () => {
             if (!_layout) return;
-            // try { _layout.parentNode.removeChild(_layout); } catch (e) { console.log(e); }
             _layout.parentNode.removeChild(_layout);
             popupDialog = null;
         };
@@ -97,7 +95,6 @@ define(['utils/index'], function (utils) {
         let isDraggable = opts.isDraggable || true;
 
         function layout () {
-            // ${_buttons.reduce((p, c) => `${p}<div class='button ${c.id}'>${c.title}</div>`, '')}
             return `
                 <div id='popup-${_id}' class='popup-wrapper popup dialog-with-selection'>
                     <div class='container'>
@@ -111,8 +108,8 @@ define(['utils/index'], function (utils) {
                                 </div>`, '')}
                         </div>
                         <div class='controls'>
-                            <div id='primary' class='button'>${_buttons.primary.title || 'Кнопка 1'}</div>
-                            <div id='secondary' class='button'>${_buttons.secondary.title || 'Кнопка 2'}</div>
+                            <button id='primary'>${_buttons.primary.title || 'Кнопка 1'}</button>
+                            <button id='secondary'>${_buttons.secondary.title || 'Кнопка 2'}</button>
                         </div>
                     </div>
                 </div>`.replace(/\s\s+/gmi, '');
@@ -122,7 +119,7 @@ define(['utils/index'], function (utils) {
             if (!_layout) return;
             let self = this;
 
-            _layout.querySelector(`#primary`).addEventListener('click', e => {
+            _layout.querySelector(`button#primary`).addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 let selectedElements = _layout.querySelectorAll('.selected');
@@ -130,7 +127,7 @@ define(['utils/index'], function (utils) {
                 self.close();
                 _buttons.primary.cb && _buttons.primary.cb(e.target, Array.from(selectedElements).map(e => { return e.dataset.id; }));
             });
-            _layout.querySelector(`#secondary`).addEventListener('click', e => {
+            _layout.querySelector(`button#secondary`).addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
                 self.close();
@@ -175,7 +172,6 @@ define(['utils/index'], function (utils) {
 
         this.close = () => {
             if (!_layout) return;
-            // try { _layout.parentNode.removeChild(_layout); } catch (e) { console.log(e); }
             _layout.parentNode.removeChild(_layout);
             popupWithSelection = null;
         };
@@ -205,8 +201,8 @@ define(['utils/index'], function (utils) {
             let list = _list.reduce((p, c, i, a) => {
                 return `
                     ${p}
-                    <div id='${c.id}' class='list-element'>
-                        <span class='text'>${c.text}</span>
+                    <div id='${c.id}' class='menu-element'>
+                        <button>${c.text}</button>
                         <i class='icon'></i>
                     </div>
                     ${i < a.length - 1 ? `<div class='divider'></div>` : ''}
@@ -222,12 +218,22 @@ define(['utils/index'], function (utils) {
             _layout.addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
-                let target = e.target.closest('div.list-element').id;
+                let target = e.target.closest('div.menu-element').id;
                 self.close();
                 _cb && _cb(target);
             });
 
             document.body.addEventListener('click', globalClickEvent);
+
+            let selfRemovedFunction = (() => {
+                let self = this;
+                return function selfRemoved (e) {
+                    self.close();
+                    document.body.removeEventListener('keyup', selfRemoved);
+                }
+            })();
+            document.body.addEventListener('keyup', selfRemovedFunction);
+
             _layout.addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
@@ -272,7 +278,7 @@ define(['utils/index'], function (utils) {
             let target = liId ? _layout.querySelector(`#${liId}`) : _layout;
             return new Promise((resolve, reject) => {
                 if (!target) reject(new Error(`${liId} not found!`));
-                target.addEventListener('click', e => { self.close(); resolve(e.target.closest('.list-element').id); });
+                target.addEventListener('click', e => { self.close(); resolve(e.target.closest('.menu-element').id); });
             });
         };
 

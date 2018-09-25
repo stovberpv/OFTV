@@ -161,29 +161,29 @@ span {
     font-size: .75rem;
 }
 
-.popup-wrapper .controls .button {
+.popup-wrapper .controls button {
     border-radius: 3px;
     color: rgba(var(--white), 1);
-    padding: 0 10px;
     cursor: pointer;
     transition: all .3s;
     padding: 10px 15px;
     text-transform: uppercase;
+    border: none;
 }
 
-.popup-wrapper .controls .button#primary {
+.popup-wrapper .controls button#primary {
     background-color: rgba(var(--carnation), .8);
 }
 
-.popup-wrapper .controls .button#primary:hover {
+.popup-wrapper .controls button#primary:hover {
     background-color: rgba(var(--carnation), 1);
 }
 
-.popup-wrapper .controls .button#secondary {
+.popup-wrapper .controls button#secondary {
     background-color: rgba(var(--vulcan), .3);
 }
 
-.popup-wrapper .controls .button#secondary:hover {
+.popup-wrapper .controls button#secondary:hover {
     background-color: rgba(var(--vulcan), .5);
 }
 
@@ -260,7 +260,7 @@ span {
 /* #region popup dialog */
 
 .popup-wrapper.dialog .container {
-    height: 150px;
+    height: auto;
     grid-template-rows: repeat(3, auto);
 }
 
@@ -280,16 +280,14 @@ span {
     border-radius: 3px;
     box-shadow: 0 0 10px 0 rgba(var(--vulcan), .3);
     animation: contextmenu-show .5s;
+    padding: 3px 6px;
+    grid-gap: 1.5px;
 }
 
 .contextmenu div:not(.divider) {
     display: grid;
-    grid-template-columns: auto 20px;
+    grid-template-columns: auto 24px;
     cursor: pointer;
-    padding: 5px 10px;
-    opacity: .6;
-    font-size: .8rem;
-    transition: all .3s;
 }
 
 .contextmenu div.divider {
@@ -298,53 +296,70 @@ span {
     border-bottom: 1px solid rgba(var(--vulcan), .1);
 }
 
-.contextmenu div:not(.divider):hover {
-    opacity: .8;
-}
-
-.contextmenu div span.text {
+.contextmenu div button {
     grid-column: 1;
     transition: all 0.3s;
     margin: 0 20px 0 0;
-    align-self: center;
+    color: rgba(var(--vulcan), .8);
+    font-size: 13px;
+    border: none;
+    background-color: transparent;
+    text-align: left;
+    padding: 0;
+    cursor: inherit;
 }
 
-.contextmenu div:not(.divider):hover span.text {
+.contextmenu div:hover button {
     color: rgba(var(--carnation), 1);
     transform: translatex(5px);
 }
 
 .contextmenu div i.icon {
     grid-column: 2;
-    width: 20px;
-    height: 20px;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 95%;
+    width: 24px;
+    height: 24px;
+    opacity: .7;
+    background-color: rgba(var(--vulcan), 1);
+    mask-size: 85%;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    -webkit-mask-size: 85%;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
+}
+.contextmenu div:hover i.icon {
+    opacity: .9;
+    background-color: rgba(var(--carnation), 1);
 }
 
 .contextmenu div#check i.icon {
-    background-image: url(../images/icons/g-location-on.svg);
+    mask-image: url(../images/icons/g-location-on.svg);
+    -webkit-mask-image: url(../images/icons/g-location-on.svg);
 }
 
 .contextmenu div#uncheck i.icon {
-    background-image: url(../images/icons/g-location-off.svg);
+    mask-image: url(../images/icons/g-location-off.svg);
+    -webkit-mask-image: url(../images/icons/g-location-off.svg);
 }
 
 .contextmenu div#complete i.icon {
-    background-image: url(../images/icons/g-location-fixed.svg);
+    mask-image: url(../images/icons/g-location-fixed.svg);
+    -webkit-mask-image: url(../images/icons/g-location-fixed.svg);
 }
 
 .contextmenu div#update i.icon {
-    background-image: url(../images/icons/g-edit.svg);
+    mask-image: url(../images/icons/g-edit.svg);
+    -webkit-mask-image: url(../images/icons/g-edit.svg);
 }
 
 .contextmenu div#fix i.icon {
-    background-image: url(../images/icons/g-gps-fixed.svg);
+    mask-image: url(../images/icons/g-gps-fixed.svg);
+    -webkit-mask-image: url(../images/icons/g-gps-fixed.svg);
 }
 
 .contextmenu div#delete i.icon {
-    background-image: url(../images/icons/g-delete.svg);
+    mask-image: url(../images/icons/g-delete.svg);
+    -webkit-mask-image: url(../images/icons/g-delete.svg);
 }
 
 /* #endregion */
@@ -481,3 +496,10 @@ ymaps>div.wrapper div.cable-type {
 }
 
 /* #endregion */
+
+/*
+    test this
+        transform: translate3d(0,0,0);
+        transition: opacity 250ms ease,visibility 250ms ease,transform 250ms cubic-bezier(.71,1.7,.77,1.24);
+        transform: translate3d(0,20px,0);
+*/

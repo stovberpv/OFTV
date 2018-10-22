@@ -6,7 +6,7 @@ define(['utils/index'], function (utils) {
     let popupWithSelection = null;
 
     const MODE = {
-        SINGLE: 'S',
+        SINGLE:   'S',
         MULTIPLE: 'M'
     };
 
@@ -197,8 +197,17 @@ define(['utils/index'], function (utils) {
             return globalClickEvent.bind(this);
         })();
 
+        let globalKeyupEvent = (() => {
+            let self = this;
+            return function selfRemovedFunction (e) {
+                try { self.close(); } catch (e) { debugger; }
+                document.body.removeEventListener('keyup', selfRemovedFunction);
+            };
+        })();
+
         function layout () {
             let list = _list.reduce((p, c, i, a) => {
+                // FIX c is Array
                 return `
                     ${p}
                     <div id='${c.id}' class='menu-element'>
@@ -209,7 +218,7 @@ define(['utils/index'], function (utils) {
                     `;
             }, '');
             return `<div id='contextmenu-${_id}' class='contextmenu' style='left:${_xy[0]}px; top:${_xy[1]}px;'>${list}</div>`.replace(/\s\s+/gmi, '');
-        };
+        }
 
         function setListeners () {
             if (!_layout) return;
@@ -218,26 +227,13 @@ define(['utils/index'], function (utils) {
             _layout.addEventListener('click', e => {
                 e.stopPropagation();
                 e.preventDefault();
-                let target = e.target.closest('div.menu-element').id;
+                let target = e.target.closest('div.menu-element');
                 self.close();
-                _cb && _cb(target);
+                _cb && _cb(target ? target.id : void (0));
             });
 
             document.body.addEventListener('click', globalClickEvent);
-
-            let selfRemovedFunction = (() => {
-                let self = this;
-                return function selfRemoved (e) {
-                    self.close();
-                    document.body.removeEventListener('keyup', selfRemoved);
-                }
-            })();
-            document.body.addEventListener('keyup', selfRemovedFunction);
-
-            _layout.addEventListener('click', e => {
-                e.stopPropagation();
-                e.preventDefault();
-            });
+            document.body.addEventListener('keyup', globalKeyupEvent);
         }
 
         this.getDOM = () => { return _layout; };
@@ -269,6 +265,7 @@ define(['utils/index'], function (utils) {
         this.close = () => {
             if (!_layout) return;
             document.body.removeEventListener('click', globalClickEvent);
+            document.body.removeEventListener('keyup', globalKeyupEvent);
             _layout.parentNode.removeChild(_layout);
             contextMenu = null;
         };
@@ -285,9 +282,111 @@ define(['utils/index'], function (utils) {
         return this;
     }
 
-    return {
-        PopupDialog: PopupDialog,
-        PopupWithSelection: PopupWithSelection,
-        ContextMenu: ContextMenu
-    };
+    /**
+     * element
+     * status
+     * actions
+     *
+     * @param {*} opts
+     * @returns
+     */
+    function SideMenu (opts) {
+        let _id = Math.floor(Math.random() * 100000);
+        let _menuList = opts.list || [];
+        let _eventsHandlers = opts.eventsHandlers || {};
+        let _sideMenu = null;
+        let _prefixId = 'sidemenu';
+
+        let overlayClickEvent = e => {
+            e.stopPropagation();
+            close();
+        };
+
+        let sidemenuKeyupEvent = e => {
+            e.stopPropagation();
+            close();
+        };
+
+        let buttonClickEvent = e => {
+            let target = e.target;
+            let buttonId = target.dataset.actionid;
+            let listElement = target.closest('li');
+            let elementId = listElement.dataset.guid;
+            try {
+                _eventsHandlers.buttons(buttonId, elementId);
+            } catch (e) {
+                console.log('No handler for event');
+            } finally {
+                // close();
+            }
+        };
+
+        function initListeners () {
+            if (_sideMenu) {
+                _sideMenu.querySelector('.overlay').addEventListener('click', overlayClickEvent);
+
+                let buttons = _sideMenu.querySelectorAll('button');
+                Array.from(buttons).forEach(function (button) {
+                    button.addEventListener('click', buttonClickEvent);
+                });
+
+                _sideMenu.addEventListener('keyup', sidemenuKeyupEvent);
+            }
+        }
+
+        function crateLayout () {
+            function getButtons (buttons) {
+                let result = buttons.reduce((p, c) =>
+                    `${p}<button data-actionId ='${c.id}' class='${c.id}' title='${c.title}'></button>`,
+                '');
+
+                return `<div class='${_prefixId}-inner'>${result}</div>`;
+            }
+
+            function getList () {
+                let list = '';
+                _menuList.forEach(element => {
+                    list = `${list}<li data-guid='${element.id}'>${element.title}${getButtons(element.buttons)}</li>`;
+                });
+
+                return `
+                    <div id='${_prefixId}-wrapper-${_id}' class='${_prefixId}'>
+                        <div class='overlay'></div>
+                        <ul class='${_prefixId}-main'>${list}</ul>
+                    </div>`.replace(/\s\s+/gmi, '');
+            }
+
+            return getList();
+        }
+
+        function render () {
+            let template = document.createElement('template');
+            template.innerHTML = crateLayout();
+            _sideMenu = template.content.firstChild;
+            initListeners();
+
+            return this;
+        }
+        this.render = render;
+
+        function show () {
+            _sideMenu && document.body.appendChild(_sideMenu);
+            _sideMenu = document.getElementById(`${_prefixId}-wrapper-${_id}`);
+
+            return this;
+        }
+        this.show = show;
+
+        function close () {
+            if (_sideMenu) {
+                _sideMenu.parentNode.removeChild(_sideMenu);
+                _sideMenu = null;
+            }
+        }
+        this.close = close;
+
+        return this;
+    }
+
+    return { PopupDialog, PopupWithSelection, ContextMenu, SideMenu };
 });

@@ -17,7 +17,7 @@ class DBHelper {
      * @memberof DBHelper
      */
     constructor (opts = { autoclose: true, autoopen: true }) {
-        this._path = `./db/${appConfig.dbName}.db`;
+        this._path = `./database/${appConfig.dbName}.db`;
         this._db = null;
         this._autoclose = opts.autoclose;
         this._autoopen = opts.autoopen;

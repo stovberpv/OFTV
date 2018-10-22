@@ -1,6 +1,11 @@
-const DBHelper = require.main.require('../db/helper');
+const DBHelper = require.main.require('../database/helper');
 
 module.exports = function () {
+    const DATA_TYPES = {
+        NODE: 'node',
+        ROUTE: 'route'
+    };
+
     function _prepare (data) {
         let _data = {
             guid: data.guid,
@@ -42,10 +47,10 @@ module.exports = function () {
         let values;
         let table;
 
-        if (data.type === 'node') {
+        if (data.type === DATA_TYPES.NODE) {
             fields = nodeFields;
             table = 'node';
-        } else if (data.type === 'route') {
+        } else if (data.type === DATA_TYPES.ROUTE) {
             fields = routeFields;
             table = 'route';
         } else {
@@ -71,21 +76,27 @@ module.exports = function () {
         };
     }
 
-    function request (data) {
-        let db = new DBHelper();
-        let prep = _prepare(data);
-        return new Promise((resolve, reject) => {
-            let query = db.all(`SELECT * FROM ${prep.table}`);
-            query.then(r => { resolve(r); }).catch(e => { reject(e); });
-        });
-    }
+    const REQUEST_TYPES = {
+        MASS: 'M',
+        SINGLE: 'S'
+    };
+
     function read (data) {
-        let db = new DBHelper();
-        let prep = _prepare(data);
-        return new Promise((resolve, reject) => {
-            let query = db.all(`SELECT * FROM ${prep.table} WHERE guid = ?`, [prep.data.guid]);
-            query.then(r => { resolve(r); }).catch(e => { reject(e); });
-        });
+        if (data.requestType === REQUEST_TYPES.MASS) {
+            let db = new DBHelper();
+            let prep = _prepare(data);
+            return new Promise((resolve, reject) => {
+                let query = db.all(`SELECT * FROM ${prep.table}`);
+                query.then(r => { resolve(r); }).catch(e => { reject(e); });
+            });
+        } else if (data.requestType === REQUEST_TYPES.SINGLE) {
+            let db = new DBHelper();
+            let prep = _prepare(data);
+            return new Promise((resolve, reject) => {
+                let query = db.all(`SELECT * FROM ${prep.table} WHERE guid = ?`, [prep.data.guid]);
+                query.then(r => { resolve(r); }).catch(e => { reject(e); });
+            });
+        }
     }
     function update (data) {
         let db = new DBHelper();
@@ -119,11 +130,5 @@ module.exports = function () {
         });
     }
 
-    return {
-        request: request,
-        read: read,
-        create: create,
-        update: update,
-        remove: remove
-    };
+    return { read, create, update, remove };
 };

@@ -2,9 +2,9 @@ define({
     host: 'http://localhost',
     port: '8080',
     options: {
-        reconnection: false,
-        reconnectionAttempts: 10, // Infinity
-        autoConnect: true,
-        timeout: 20000
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        autoConnect: false,
+        timeout: 1000
     }
 });

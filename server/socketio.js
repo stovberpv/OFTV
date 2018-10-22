@@ -1,40 +1,36 @@
 const SocketIO = require('socket.io');
 const log = require('fancy-log');
 const cv = require.main.require('../config/console');
-const dbController = require.main.require('../db/controller')();
+const dbController = require.main.require('../database/controller')();
 
 module.exports = function (server) {
     'use strict';
 
     let io = new SocketIO(server);
 
+    io.on('connection', onConnection);
+
     function onConnection (socket) {
         log(`${cv.FgBlue}New connection established. ${cv.FgCyan}IP::${socket.request.connection.remoteAddress}${cv.Reset}`);
+
         socket.on('disconnect', () => log(`${cv.FgRed}Socket connection was closed. ${cv.FgCyan}IP::${socket.request.connection.remoteAddress}${cv.Reset}`));
 
-        socket.on('network resources request', e => {
-            let query = dbController.request(e);
-            query.then(r => { socket.emit('network resources requested', { type: e.type, data: r }); }, e => { log(e); });
+        socket.on('read data', (e, cb) => {
+            dbController.read(e).then(result => {
+                if (cb) cb(result[0]);
+                else socket.emit('data was read', { type: e.type, data: result });
+            }, error => { log(error); });
         });
-        socket.on('network resource read', (e, cb) => {
-            let query = dbController.read(e);
-            query.then(r => { cb(r[0]); }, e => { log(e); });
+        socket.on('create data', e => {
+            dbController.create(e).then(result => { socket.emit('data was created', { type: e.type, data: result }); }, error => { log(error); });
         });
-        socket.on('network resource create', e => {
-            let query = dbController.create(e);
-            query.then(r => { socket.emit('network resource created', { type: e.type, data: r }); }, e => { log(e); });
+        socket.on('update data', e => {
+            dbController.update(e).then(result => { socket.emit('data was updated', { type: e.type, data: result }); }, error => { log(error); });
         });
-        socket.on('network resource update', e => {
-            let query = dbController.update(e);
-            query.then(r => { socket.emit('network resource updated', { type: e.type, data: r }); }, e => { log(e); });
-        });
-        socket.on('network resource remove', e => {
-            let query = dbController.remove(e);
-            query.then(r => { socket.emit('network resource removed', { type: e.type, data: r }); }, e => { log(e); });
+        socket.on('remove data', e => {
+            dbController.remove(e).then(result => { socket.emit('data was removed', { type: e.type, data: result }); }, error => { log(error); });
         });
     }
-
-    io.on('connection', onConnection);
 
     return io;
 };

@@ -1,7 +1,5 @@
-define(['./config', './socket'], function (config, socket) {
-    console.log('Config loaded');
-    return {
-        config: config,
-        socket: socket,
-    };
+define(['./locale', './config', './socket'], function (locale, config, socket) {
+    // console.log('Config loaded');
+
+    return { locale, config, socket };
 });

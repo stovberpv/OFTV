@@ -1,6 +1,5 @@
-define(['./popup'], function (Popup) {
-    console.log('Popup loaded');
-    return {
-        ...Popup
-    };
+define(['./popup'], function (popup) {
+    // console.log('Popup loaded');
+
+    return { popup };
 });

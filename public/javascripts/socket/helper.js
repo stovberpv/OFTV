@@ -1,11 +1,14 @@
-define(['config/index', 'socketio', './routes'], function (config, socketio, routes) {
+define([], function () {
     'use strict';
 
-    function helper () {
-        let _socketio = socketio(`${config.socket.host}:${config.socket.port}`, config.socket.options);
-        let emit = (name, data, cb) => { _socketio.emit(name, data, cb); };
+    function helper (bundle) {
+        bundle.isConnected = function () {
+            // this.io.on('connect', () => {
+            //     console.log(this.io.connected);
+            // });
+        };
 
-        return { ...routes(_socketio), emit };
+        return bundle;
     }
 
     return helper;

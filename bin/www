@@ -1,22 +1,7 @@
 #!/usr/bin/env node
 const { app } = require.main.require('../app')();
 const { server, port } = require.main.require('../server/server')(app);
-
-// require.main.require('../db/db')();
 const io = require.main.require('../server/socketio')(server);
-/*
-require('socketio-auth')(io, {
-    authenticate: function (socket, data, callback) {
-      //get credentials sent by the client
-      console.log(`${data.username}:${data.password}`);
+// require.main.require('../server/auth')(io);
 
-    //   db.findUser('User', {username:username}, function(err, user) {
-
-        //inform the callback of auth success/failure
-        // if (err || !user) return callback(new Error("User not found"));
-        // return callback(null, user.password == password);
-    //   });
-    }
-  });
-*/
 server.listen(port, '0.0.0.0');

@@ -1,0 +1,30 @@
+{
+	"folders": [
+		{
+			// Source code
+            "name": "OFTV",
+			"path": "."
+		}
+	],
+	"settings": {
+	},
+	"launch": {
+		"configurations": [
+			{
+				"type": "node",
+				"request": "launch",
+				"name": "Debug Node",
+				"program": "${workspaceFolder}/bin/www",
+				"skipFiles": [
+				]
+			},
+			{
+				"type": "chrome",
+				"request": "launch",
+				"name": "Debug localhost",
+				"url": "http://localhost:8080",
+				"webRoot": "${workspaceFolder}/bin/www"
+			}
+		]
+	}
+}

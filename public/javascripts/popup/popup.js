@@ -1,12 +1,16 @@
-define(['utils/index'], function (utils) {
+define(function (require) {
     'use strict';
 
-    let contextMenu = null;
+    let utils = require('utils/index');
+    let configIndex = require('config/index');
+    // let eventBus = require('eventbus');
+
+    // let contextMenu = null;
     let popupDialog = null;
     let popupWithSelection = null;
 
     const MODE = {
-        SINGLE:   'S',
+        SINGLE: 'S',
         MULTIPLE: 'M'
     };
 
@@ -178,215 +182,209 @@ define(['utils/index'], function (utils) {
     }
 
     function ContextMenu (opts) {
-        let _id = Math.floor(Math.random() * 100000);
-        let _mode = opts.mode || MODE.SINGLE;
-        let _layout = null;
-        let _caller = null;
-        let _list = opts.list || [];
-        let _cb = opts.cb || null;
         let _xy = opts.xy || [];
 
-        let globalClickEvent = (() => {
-            function globalClickEvent (e) {
-                if (!e.target.closest(`#contextmenu-${_id}`)) {
-                    document.body.removeEventListener('click', globalClickEvent);
-                    this.close();
+        let _contextMenu = null;
+        let _menuList = opts.list;
+        let _eventListeners = opts.eventListeners || {};
+        let _buttons = [
+            { statusCode: 0x10, id: 'hookup', title: configIndex.locale.ru.menu.t001 },   // '10000'
+            { statusCode: 0x8, id: 'breakup', title: configIndex.locale.ru.menu.t002 },   // '01000'
+            { statusCode: 0x1, id: 'new', title: configIndex.locale.ru.menu.t003 },       // '00001'
+            { statusCode: 0x4, id: 'edit', title: configIndex.locale.ru.menu.t004 },      // '00100'
+            { statusCode: 0x2, id: 'remove', title: configIndex.locale.ru.menu.t005 }     // '00010'
+        ];
+        let _events = {
+            onClickButton: e => {
+                let target = e.target;
+                let btn = target.dataset.actionId;
+                let id = target.dataset.id;
+                try {
+                    _eventListeners.button(btn, id);
+                } catch (e) {
+                    console.log('No handler for event');
+                } finally {
+                    _close();
                 }
             }
-
-            return globalClickEvent.bind(this);
-        })();
-
-        let globalKeyupEvent = (() => {
-            let self = this;
-            return function selfRemovedFunction (e) {
-                try { self.close(); } catch (e) { debugger; }
-                document.body.removeEventListener('keyup', selfRemovedFunction);
-            };
-        })();
-
-        function layout () {
-            let list = _list.reduce((p, c, i, a) => {
-                // FIX c is Array
-                return `
-                    ${p}
-                    <div id='${c.id}' class='menu-element'>
-                        <button>${c.text}</button>
-                        <i class='icon'></i>
-                    </div>
-                    ${i < a.length - 1 ? `<div class='divider'></div>` : ''}
-                    `;
-            }, '');
-            return `<div id='contextmenu-${_id}' class='contextmenu' style='left:${_xy[0]}px; top:${_xy[1]}px;'>${list}</div>`.replace(/\s\s+/gmi, '');
-        }
-
-        function setListeners () {
-            if (!_layout) return;
-            let self = this;
-
-            _layout.addEventListener('click', e => {
-                e.stopPropagation();
-                e.preventDefault();
-                let target = e.target.closest('div.menu-element');
-                self.close();
-                _cb && _cb(target ? target.id : void (0));
-            });
-
-            document.body.addEventListener('click', globalClickEvent);
-            document.body.addEventListener('keyup', globalKeyupEvent);
-        }
-
-        this.getDOM = () => { return _layout; };
-
-        this.setCaller = caller => { _caller = caller; };
-
-        this.getCaller = () => { return _caller; };
-
-        this.render = () => {
-            let template = document.createElement('template');
-            template.innerHTML = layout();
-            _layout = template.content.firstChild;
-            setListeners.bind(this)();
-
-            return this;
         };
 
-        this.show = () => {
-            _layout && document.body.appendChild(_layout);
-            _layout = document.getElementById(`contextmenu-${_id}`);
-            if (_mode === MODE.SINGLE) {
-                contextMenu && contextMenu.close();
-                contextMenu = this;
+        function _crateLayout () {
+            let buttons = _buttons.reduce((p, c, i, a) =>
+                `${p}
+                <button class='${c.id}' title='${c.title}' data-id='${_menuList[0].id}' data-action-id ='${c.id}' data-status-code='${c.statusCode}'>${c.title}</button>
+                ${i < a.length - 1 ? `<div class='divider'></div>` : ''}
+                `,
+            '');
+            return `<div id='contextmenu' class='contextmenu' style='left:${_xy[0]}px; top:${_xy[1]}px;'>${buttons}</div>`.replace(/\s\s+/gmi, '');
+        }
+
+        function _render () {
+            let template = document.createElement('template');
+            template.innerHTML = _crateLayout();
+            _contextMenu = template.content.firstChild;
+
+            return this;
+        }
+
+        function _init () {
+            _close();
+            if (_contextMenu) {
+                _contextMenu.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', _events.onClickButton);
+                });
             }
 
             return this;
-        };
+        }
 
-        this.close = () => {
-            if (!_layout) return;
-            document.body.removeEventListener('click', globalClickEvent);
-            document.body.removeEventListener('keyup', globalKeyupEvent);
-            _layout.parentNode.removeChild(_layout);
-            contextMenu = null;
-        };
+        function _display () {
+            if (_contextMenu) {
+                document.body.appendChild(_contextMenu);
+                _contextMenu = document.getElementById(`contextmenu`);
+            }
 
-        this.awaitUserSelect = liId => {
-            let self = this;
-            let target = liId ? _layout.querySelector(`#${liId}`) : _layout;
-            return new Promise((resolve, reject) => {
-                if (!target) reject(new Error(`${liId} not found!`));
-                target.addEventListener('click', e => { self.close(); resolve(e.target.closest('.menu-element').id); });
-            });
-        };
+            return this;
+        }
 
-        return this;
+        function _close () {
+            let contextMenu = document.getElementById(`contextmenu`);
+            if (contextMenu) {
+                contextMenu.parentNode.removeChild(contextMenu);
+            }
+        }
+
+        this.init = _init;
+        this.render = _render;
+        this.display = _display;
+        this.close = _close;
     }
+    ContextMenu.eachButton = function (cb) {
+        let menu = document.getElementById(`contextmenu`);
+        if (menu) {
+            menu.querySelectorAll('button').forEach(function (button) { cb(button); });
+        }
+    };
 
     /**
-     * element
-     * status
-     * actions
      *
-     * @param {*} opts
+     *
+     * @param {Object} opts
      * @returns
      */
     function SideMenu (opts) {
-        let _id = Math.floor(Math.random() * 100000);
-        let _menuList = opts.list || [];
-        let _eventsHandlers = opts.eventsHandlers || {};
         let _sideMenu = null;
-        let _prefixId = 'sidemenu';
-
-        let overlayClickEvent = e => {
-            e.stopPropagation();
-            close();
-        };
-
-        let sidemenuKeyupEvent = e => {
-            e.stopPropagation();
-            close();
-        };
-
-        let buttonClickEvent = e => {
-            let target = e.target;
-            let buttonId = target.dataset.actionid;
-            let listElement = target.closest('li');
-            let elementId = listElement.dataset.guid;
-            try {
-                _eventsHandlers.buttons(buttonId, elementId);
-            } catch (e) {
-                console.log('No handler for event');
-            } finally {
-                // close();
+        let _menuList = opts.list || [];
+        let _eventListeners = opts.eventListeners || {};
+        let _buttons = [
+            { statusCode: 0x10, id: 'hookup', title: configIndex.locale.ru.menu.t001 },   // '10000'
+            { statusCode: 0x8, id: 'breakup', title: configIndex.locale.ru.menu.t002 },   // '01000'
+            { statusCode: 0x1, id: 'new', title: configIndex.locale.ru.menu.t003 },       // '00001'
+            { statusCode: 0x4, id: 'edit', title: configIndex.locale.ru.menu.t004 },      // '00100'
+            { statusCode: 0x2, id: 'remove', title: configIndex.locale.ru.menu.t005 }     // '00010'
+        ];
+        let _events = {
+            onKeyup: e => {
+                e.stopPropagation();
+                _close();
+            },
+            onClickOverlay: e => {
+                e.stopPropagation();
+                _close();
+            },
+            onClickButton: e => {
+                let target = e.target;
+                let btn = target.dataset.actionId;
+                let li = target.closest('li');
+                let id = li.id;
+                try {
+                    _eventListeners.button(btn, id);
+                } catch (e) {
+                    console.log('No handler for event');
+                } finally {
+                    // close();
+                }
             }
         };
 
-        function initListeners () {
-            if (_sideMenu) {
-                _sideMenu.querySelector('.overlay').addEventListener('click', overlayClickEvent);
-
-                let buttons = _sideMenu.querySelectorAll('button');
-                Array.from(buttons).forEach(function (button) {
-                    button.addEventListener('click', buttonClickEvent);
-                });
-
-                _sideMenu.addEventListener('keyup', sidemenuKeyupEvent);
-            }
-        }
-
-        function crateLayout () {
-            function getButtons (buttons) {
-                let result = buttons.reduce((p, c) =>
-                    `${p}<button data-actionId ='${c.id}' class='${c.id}' title='${c.title}'></button>`,
+        function _crateLayout () {
+            function getButtons () {
+                let buttons = _buttons.reduce((p, c) =>
+                    `${p}
+                    <button class='${c.id}' title='${c.title}' data-action-id ='${c.id}' data-status-code='${c.statusCode}'>
+                    </button>`,
                 '');
 
-                return `<div class='${_prefixId}-inner'>${result}</div>`;
+                return `<div class='btn-group'>${buttons}</div>`;
             }
 
             function getList () {
-                let list = '';
-                _menuList.forEach(element => {
-                    list = `${list}<li data-guid='${element.id}'>${element.title}${getButtons(element.buttons)}</li>`;
-                });
+                let list = _menuList.reduce((p, c) =>
+                    `${p}
+                    <li id='${c.id}'>
+                        ${c.title}
+                        ${getButtons()}
+                    </li>`,
+                '');
 
-                return `
-                    <div id='${_prefixId}-wrapper-${_id}' class='${_prefixId}'>
-                        <div class='overlay'></div>
-                        <ul class='${_prefixId}-main'>${list}</ul>
-                    </div>`.replace(/\s\s+/gmi, '');
+                return `<ul>${list}</ul>`;
             }
 
-            return getList();
+            return `
+                <div id='sidemenu'>
+                    <div class='overlay'></div>
+                    ${getList()}
+                </div>`.replace(/\s\s+/gmi, '');
         }
+        function _init () {
+            if (_sideMenu) {
+                _sideMenu.querySelector('.overlay').addEventListener('click', _events.onClickOverlay);
 
-        function render () {
+                _sideMenu.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', _events.onClickButton);
+                });
+
+                _sideMenu.addEventListener('keyup', _events.onKeyup);
+
+                // eventBus.on('sidemenu-update', SideMenu.eachLi);
+            }
+
+            return this;
+        }
+        function _render () {
             let template = document.createElement('template');
-            template.innerHTML = crateLayout();
+            template.innerHTML = _crateLayout();
             _sideMenu = template.content.firstChild;
-            initListeners();
 
             return this;
         }
-        this.render = render;
-
-        function show () {
-            _sideMenu && document.body.appendChild(_sideMenu);
-            _sideMenu = document.getElementById(`${_prefixId}-wrapper-${_id}`);
+        function _display () {
+            if (_sideMenu) {
+                document.body.appendChild(_sideMenu);
+                _sideMenu = document.getElementById(`sidemenu`);
+            }
 
             return this;
         }
-        this.show = show;
-
-        function close () {
+        function _close () {
             if (_sideMenu) {
                 _sideMenu.parentNode.removeChild(_sideMenu);
                 _sideMenu = null;
+                // eventBus.cancel('sidemenu-update', SideMenu.eachLi);
             }
         }
-        this.close = close;
 
-        return this;
+        this.init = _init;
+        this.render = _render;
+        this.display = _display;
+        this.close = _close;
     }
+    SideMenu.eachLi = function (cb) {
+        let menu = document.getElementById(`sidemenu`);
+        if (menu) {
+            menu.querySelectorAll('li').forEach(function (li) { cb(li); });
+        }
+    };
 
     return { PopupDialog, PopupWithSelection, ContextMenu, SideMenu };
 });

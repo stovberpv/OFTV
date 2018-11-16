@@ -22,5 +22,5 @@ require.config({
 });
 
 require(['@app/app'], function (app) {
-    app().run();
+    app().go();
 });

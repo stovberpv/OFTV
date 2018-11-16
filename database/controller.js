@@ -81,6 +81,12 @@ module.exports = function () {
         SINGLE: 'S'
     };
 
+    /**
+     *
+     *
+     * @param {Object} data { requestType = 'M | S' type: 'node | route', guid: '' }
+     * @returns
+     */
     function read (data) {
         if (data.requestType === REQUEST_TYPES.MASS) {
             let db = new DBHelper();

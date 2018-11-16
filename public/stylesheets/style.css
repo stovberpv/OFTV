@@ -280,112 +280,67 @@ span {
 .contextmenu {
     position: absolute;
     background-color: rgba(var(--white), 1);
-    display: grid;
-    grid-row-gap: 0;
     border-radius: 3px;
     box-shadow: 0 0 10px 0 rgba(var(--vulcan), .3);
     animation: contextmenu-show .5s;
-    padding: 3px 6px;
-    grid-gap: 1.5px;
+
+    padding: 5px 0;
+    font-size: 0.9rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
-.contextmenu div:not(.divider) {
-    display: grid;
-    grid-template-columns: auto 24px;
-    cursor: pointer;
-}
-
-.contextmenu div.divider {
+.contextmenu .divider {
+    width: 90%;
+    margin: 5px 0;
     height: 0px;
     line-height: 0px;
     border-bottom: 1px solid rgba(var(--vulcan), .1);
 }
 
-.contextmenu div button {
-    grid-column: 1;
-    transition: all 0.3s;
-    margin: 0 20px 0 0;
-    color: rgba(var(--vulcan), .8);
-    font-size: 13px;
-    border: none;
-    background-color: transparent;
-    text-align: left;
-    padding: 0;
-    cursor: inherit;
+.contextmenu button {
+    padding: 5px 10px;
+        border: none;
+        background-color: transparent;
+        text-align: left;
+        align-self: start;
+        width: 100%;
+        transition: all 0.2s;
+        font-size: .8rem;
+        color: rgba(var(--vulcan) .8);
+}
+.contextmenu button[disabled] {
+    color: rgba(var(--vulcan), .4);
+}
+.contextmenu button:not([disabled]) {
+    cursor: pointer;
+}
+.contextmenu button:not([disabled]):hover {
+    background-color: rgba(var(--schoolbus), .8);
+    color: rgba(var(--vulcan), .9);
 }
 
-.contextmenu div:hover button {
-    color: rgba(var(--carnation), 1);
-    transform: translatex(5px);
-}
-
-.contextmenu div i.icon {
-    grid-column: 2;
-    width: 24px;
-    height: 24px;
-    opacity: .7;
-    background-color: rgba(var(--vulcan), 1);
-    mask-size: 85%;
-    mask-position: center;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: 85%;
-    -webkit-mask-position: center;
-    -webkit-mask-repeat: no-repeat;
-}
-.contextmenu div:hover i.icon {
-    opacity: .9;
-    background-color: rgba(var(--carnation), 1);
-}
-
-.contextmenu div#check i.icon {
-    mask-image: url(../images/icons/g-location-on.svg);
-    -webkit-mask-image: url(../images/icons/g-location-on.svg);
-}
-
-.contextmenu div#uncheck i.icon {
-    mask-image: url(../images/icons/g-location-off.svg);
-    -webkit-mask-image: url(../images/icons/g-location-off.svg);
-}
-
-.contextmenu div#complete i.icon {
-    mask-image: url(../images/icons/g-location-fixed.svg);
-    -webkit-mask-image: url(../images/icons/g-location-fixed.svg);
-}
-
-.contextmenu div#update i.icon {
-    mask-image: url(../images/icons/g-edit.svg);
-    -webkit-mask-image: url(../images/icons/g-edit.svg);
-}
-
-.contextmenu div#fix i.icon {
-    mask-image: url(../images/icons/g-gps-fixed.svg);
-    -webkit-mask-image: url(../images/icons/g-gps-fixed.svg);
-}
-
-.contextmenu div#delete i.icon {
-    mask-image: url(../images/icons/g-delete.svg);
-    -webkit-mask-image: url(../images/icons/g-delete.svg);
-}
 
 /* #endregion */
 
 /* #region sidemenu */
-.sidemenu {
+#sidemenu {
     position: absolute;
     top: 0;
     right: 0;
     left: 0;
     bottom: 0;
 }
-
-.sidemenu .overlay {
+#sidemenu .overlay {
     position: absolute;
     width: 100%;
     height: 100%;
     background-color: rgba(var(--black), .5);
 }
-
-.sidemenu ul.sidemenu-main {
+#sidemenu ul {
     display: grid;
     background-color: #fff;
     position: absolute;
@@ -405,8 +360,7 @@ span {
     animation: 0.5s sidemenu-show;
     -webkit-animation: 0.5s sidemenu-show;
 }
-
-.sidemenu ul li {
+#sidemenu ul li {
     padding: 5px 10px;
     cursor: pointer;
     transition: all 0.3s;
@@ -414,35 +368,42 @@ span {
     background-color: rgba(var(--black), .1);
     color: rgba(var(--black), .8);
 }
-
-.sidemenu ul li button {
-    background-color: transparent;
+#sidemenu ul li:hover {
+    color: rgba(var(--black), 1);
+}
+#sidemenu ul li .btn-group {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#sidemenu ul li button {
     border: none;
-    cursor: pointer;
     border-radius: 3px;
     padding: 0;
     width: 20px;
     height: 20px;
+    /* background-color: transparent; */
     background-color: rgba(var(--black), .5);
     margin: 0 5px;
 }
-
-.sidemenu .sidemenu-main li:hover {
-    color: rgba(var(--black), 1);
+#sidemenu ul li button[disabled] {
+    background-color: rgba(var(--carnation), 1);
 }
-.sidemenu .sidemenu-main > li:hover .sidemenu-inner {
+#sidemenu ul li button:not([disabled]) {
+    cursor: pointer;
+}
+#sidemenu ul li button:not([disabled]):hover {
+    background-color: rgba(var(--schoolbus), 1);
+}
+/* #sidemenu ul > li:hover .sidemenu-inner {
     display: flex;
 }
-.sidemenu .sidemenu-inner {
+#sidemenu .sidemenu-inner {
     display: none;
     margin: 5px 0;
     animation: 0.5s sidemenu-show;
     position: relative;
-}
-.sidemenu .sidemenu-main button:hover {
-    background-color: rgba(var(--cerulean), 1);
-}
-
+} */
 /* #endregion */
 
 /* #endregion */

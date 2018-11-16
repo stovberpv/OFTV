@@ -13,69 +13,187 @@ define(['eventbus'], function (EventBus) {
             bounds && this.map.setBounds(bounds, { checkZoomRange: true });
         };
 
-        bundle.nodeHandler = (function () {
+        // TODO : ovserver каждый объект при создании регистрируется на изменение/удаление
+        bundle.geoObjectsEvents = (function () {
             let self = this;
-            function create (node) {
-                return self.geoObjectsFactory.Placemark({
-                    geometry:   node.coordinates.get(),
-                    properties: {
-                        iconCaption:    node.name.get(),
-                        hintContent:    node.description.get(),
-                        clusterCaption: node.name.get(),
-                        external:       node.toPrimitive()
-                    },
-                    options: {
-                        balloonContentLayout: self.layout.get('node')
-                    }
+
+            function registerAll () {
+                // меню - трасса добавить узел
+                //      узел - установка префикса трассы
+                //      трасса - сохраненить узул в массив узлов
+                self.map.geoObjects.events.add('hookup', e => {
+                    let guid = e.get('guid');
+                    self.geoObjectsConstructor.Clusterer.getGeoObjects().forEach(o => {
+                        let extProp = o.properties.get('external');
+                        if (extProp.guid === guid) {
+                            extProp.isHooked = true;
+                            o.properties.set('external', extProp);
+                            self.geoObjectsConstructor.EditablePolyline.points.add({ id: guid, placemark: o });
+                        }
+                    });
                 });
-            }
-            function add (geoObject) {
-                let clusterer = self.geoObjectsFactory.Clusterer;
-                !geoObject.properties.get('external').isDeprecated && clusterer.add(geoObject);
-            }
-            function remove (guid) {
-                let clusterer = self.geoObjectsFactory.Clusterer;
-                clusterer.getGeoObjects().forEach(o => {
-                    (o.properties.get('external').guid === guid) && clusterer.remove(o);
+                // меню - трасса убрать узел
+                //      узел - убрать префикс трассы
+                //      трасса - убрать узел из массива
+                self.map.geoObjects.events.add('breakup', e => {
+                    let guid = e.get('guid');
+                    self.geoObjectsConstructor.Clusterer.getGeoObjects().forEach(o => {
+                        let extProp = o.properties.get('external');
+                        if (extProp.guid === guid) {
+                            delete extProp.isHooked;
+                            o.properties.set('external', extProp);
+                            // DEBUG : upd route
+                            self.geoObjectsConstructor.EditablePolyline.points.del({ id: guid });
+                        }
+                    });
                 });
+                // меню - изменить
+                //      объект - установка префикса редактируемый
+                //      запросить данные из БД
+                self.map.geoObjects.events.add('edit', e => {});
+                // меню - удалить
+                //      отправить данные в БД
+                self.map.geoObjects.events.add('remove', e => {});
+                // меню - трасса сохранить
+                //      трасса - убрать все узлы из массива
+                //          все узлы - убрать префикс трассы
+                //      трасса - убрать
+                //      отправить информацию в БД
+                // меню - узел сохранить
+                //      узел - убрать
+                //      отправить информацию в БД
+                self.map.geoObjects.events.add('new', e => {});
             }
 
-            return { create, add, remove };
+            return { registerAll };
         }).bind(bundle)();
 
-        bundle.routeHandler = (function () {
+        bundle.geoObjectsFactory = (function () {
             let self = this;
-            function create (route) {
-                return self.geoObjectsFactory.Polyline({
-                    geometry:   route.coordinatePath.get(),
-                    properties: {
-                        hintContent: route.routeDescription.get() || route.cableDescription.get(),
-                        external:    route.toPrimitive()
-                    },
-                    options: {
-                        balloonContentLayout: self.layout.get('route')
-                    }
-                });
-            }
-            function add (geoObject) {
-                let collection = self.geoObjectsFactory.Collection;
-                !geoObject.properties.get('external').isDeprecated && collection.add(geoObject);
-            }
-            function remove (guid) {
-                let collection = self.geoObjectsFactory.Collection;
-                collection.each(o => {
-                    (o.properties.get('external').guid === guid) && collection.remove(o);
-                });
-            }
 
-            return { create, add, remove };
+            let node = {
+                create: function Node (data) {
+                    let properties = (properties => {
+                        let data = {
+                            iconCaption: properties.iconCaption || null,
+                            hintContent: properties.hintContent || null,
+                            balloonContent: properties.balloonContent || null,
+                            balloonContentHeader: properties.balloonContentHeader || null,
+                            balloonContentBody: properties.balloonContentBody || null,
+                            balloonContentFooter: properties.balloonContentFooter || null,
+                            clusterCaption: properties.clusterCaption || null,
+                            external: properties.external || {}
+                        };
+
+                        for (let k in data) if (!data[k]) delete data[k];
+
+                        return new self.ymaps.data.Manager(data);
+                    })({
+                        iconCaption: data.name.get(),
+                        hintContent: data.description.get(),
+                        clusterCaption: data.name.get(),
+                        external: data.toPrimitive()
+                    });
+
+                    let options = (options => {
+                        let data = {
+                            iconColor: '#F4425F',
+                            preset: 'islands#glyphCircleIcon',
+                            iconCaptionMaxWidth: '150',
+                            balloonContentLayout: options.balloonContentLayout || null
+                        };
+
+                        for (let k in data) if (!data[k]) delete data[k];
+
+                        return data;
+                    })({
+                        balloonContentLayout: self.layout.get('node')
+                    });
+
+                    if (data.isDeprecated.get()) {
+                        return void (0);
+                    } else {
+                        let placemark = new self.ymaps.Placemark(data.coordinates.get(), properties, options);
+                        self.geoObjectsConstructor.Clusterer.add(placemark);
+
+                        return placemark;
+                    }
+                },
+                update: function () {
+                },
+                remove: function (guid) {
+                    let clusterer = self.geoObjectsConstructor.Clusterer;
+                    clusterer.getGeoObjects().forEach(o => {
+                        (o.properties.get('external').guid === guid) && clusterer.remove(o);
+                    });
+                }
+            };
+
+            let route = {
+                create: function Route (data) {
+                    let properties = (properties => {
+                        let data = {
+                            hintContent: properties.hintContent || null,
+                            balloonContent: properties.balloonContent || null,
+                            external: properties.external || {}
+                        };
+
+                        for (let k in data) if (!data[k]) delete data[k];
+
+                        return new self.ymaps.data.Manager(data);
+                    })({
+                        hintContent: data.routeDescription.get() || data.cableDescription.get(),
+                        external: data.toPrimitive()
+                    });
+
+                    let options = (options => {
+                        let data = {
+                            /*
+                            strokeColor: ['F4425F', 'FFFFFF'],
+                            strokeOpacity: [1, 0.5],
+                            strokeStyle: '5 2',  // Первая цифра - длина штриха. Вторая - длина разрыва.
+                            strokeWidth: [5, 4]
+                            */
+                            strokeColor: 'F4425F',
+                            strokeOpacity: 1,
+                            strokeWidth: 4,
+                            balloonContentLayout: options.balloonContentLayout || null
+                        };
+
+                        for (let k in data) if (!data[k]) delete data[k];
+
+                        return data;
+                    })({
+                        balloonContentLayout: self.layout.get('route')
+                    });
+
+                    if (data.isDeprecated.get()) {
+                        return void (0);
+                    } else {
+                        let polyline = new self.ymaps.Polyline(data.coordinatePath.get(), properties, options);
+                        self.geoObjectsConstructor.Collection.add(polyline);
+
+                        return polyline;
+                    }
+                },
+                update: function () {
+                },
+                remove: function (guid) {
+                    let collection = self.geoObjectsConstructor.Collection;
+                    collection.each(o => {
+                        (o.properties.get('external').guid === guid) && collection.remove(o);
+                    });
+                }
+            };
+
+            return { node, route };
         }).bind(bundle)();
 
         bundle.balloon = function () {
             return {
                 // TODO : передавать объект сюла из меню
                 open: (editMode, e) => {
-                    let target  = e.get('target');
+                    let target = e.get('target');
                     let extProp = target.properties.get('external');
 
                     if (editMode) {
@@ -83,11 +201,11 @@ define(['eventbus'], function (EventBus) {
                         if (extProp.type === 'node') target.options.set('iconColor', '#FFE100');
                         else if (extProp.type === 'route') target.options.set('strokeColor', '#FFE100');
                     }
-                    var geoObjectState = this.geoObjectsFactory.Clusterer.getObjectState(target);
+                    var geoObjectState = this.geoObjectsConstructor.Clusterer.getObjectState(target);
                     let balloonContructor = {
-                        position:   target.geometry.getCoordinates(),
+                        position: target.geometry.getCoordinates(),
                         properties: { properties: { external: extProp } },
-                        options:    { closeButton: true, contentLayout: this.layout.get('node') }
+                        options: { closeButton: true, contentLayout: this.layout.get('node') }
                     };
                     if (geoObjectState.cluster) {
                         if (geoObjectState.isShown) {
@@ -158,67 +276,17 @@ define(['eventbus'], function (EventBus) {
         };
         */
 
-        bundle.contextMenu = (function () {
+        /*
+            контекстное меню отправляет событие с нажатой кнопкой
+            событие ловится соответствующим обработчиком вне этой функции
+            обработчик выполняет действие и отправляет событие с данными
+            меню ловит событие и обнволяет данные элемента
+            меню при создании подписывается на событие обновления элемента,
+            а при удалении отменяет подписку
+        */
+        bundle.contextMenuMediator = (function () {
             let self = this;
             let _event;
-
-            let buttonsHandlers = {
-                // меню - трасса добавить узел
-                //      узел - установка префикса трассы
-                //      трасса - сохраненить узул в массив узлов
-                hookup: guid => {
-                    self.geoObjectsFactory.Clusterer.getGeoObjects().forEach(o => {
-                        let extProp = o.properties.get('external');
-                        if (extProp.guid === guid) {
-                            extProp.isHooked = true;
-                            o.properties.set('external', extProp);
-                            // DEBUG : upd route
-                            self.geoObjectsFactory.EditablePolyline.points.add({ id: guid, placemark: o });
-                        }
-                    });
-                },
-                // меню - трасса убрать узел
-                //      узел - убрать префикс трассы
-                //      трасса - убрать узел из массива
-                breakup: guid => {
-                    self.geoObjectsFactory.Clusterer.getGeoObjects().forEach(o => {
-                        let extProp = o.properties.get('external');
-                        if (extProp.guid === guid) {
-                            delete extProp.isHooked;
-                            o.properties.set('external', extProp);
-                            // DEBUG : upd route
-                            self.geoObjectsFactory.EditablePolyline.points.del({ id: guid });
-                        }
-                    });
-                },
-                // меню - изменить
-                //      объект - установка префикса редактируемый
-                //      запросить данные из БД
-                edit:   guid => { console.log(`update :: ${guid}`); },
-                // меню - удалить
-                //      отправить данные в БД
-                remove: guid => { console.log(`delete :: ${guid}`); },
-                // меню - трасса сохранить
-                //      трасса - убрать все узлы из массива
-                //          все узлы - убрать префикс трассы
-                //      трасса - убрать
-                //      отправить информацию в БД
-                // меню - узел сохранить
-                //      узел - убрать
-                //      отправить информацию в БД
-                new:    guid => { console.log(`complete :: ${guid}`); }
-            };
-
-            function menuEventHandler (action, guid) {
-                switch (action) {
-                    case 'hookup': buttonsHandlers.hookup(guid); break;
-                    case 'breakup': buttonsHandlers.breakup(guid); break;
-                    case 'edit': buttonsHandlers.edit(guid); break;
-                    case 'remove': buttonsHandlers.remove(guid); break;
-                    case 'new': buttonsHandlers.new(guid); break;
-                    default: break;
-                }
-            }
 
             function getPossibleTargets (target) {
                 let targets = [];
@@ -234,13 +302,6 @@ define(['eventbus'], function (EventBus) {
                 return targets;
             }
 
-            let buttons = [
-                { code: 0x10, id: 'hookup', title: self.texts.ru.menu.t001 },   // '10000'
-                { code: 0x8, id: 'breakup', title: self.texts.ru.menu.t002 },   // '01000'
-                { code: 0x4, id: 'edit', title: self.texts.ru.menu.t004 },      // '00100'
-                { code: 0x2, id: 'remove', title: self.texts.ru.menu.t005 },    // '00010'
-                { code: 0x1, id: 'new', title: self.texts.ru.menu.t003 }        // '00001'
-            ];
             /**
              *
              *
@@ -273,11 +334,19 @@ define(['eventbus'], function (EventBus) {
                  * @returns {array} Список кнопок, удовлетворяющих выборке.
                  */
                 function getButtons (state) {
+                    let buttons = [
+                        { code: 0x10, id: 'hookup', title: self.texts.ru.menu.t001 },   // '10000'
+                        { code: 0x8, id: 'breakup', title: self.texts.ru.menu.t002 },   // '01000'
+                        { code: 0x4, id: 'edit', title: self.texts.ru.menu.t004 },      // '00100'
+                        { code: 0x2, id: 'remove', title: self.texts.ru.menu.t005 },    // '00010'
+                        { code: 0x1, id: 'new', title: self.texts.ru.menu.t003 }        // '00001'
+                    ];
+
                     return buttons.filter(i =>
                         (i.code & state)
                     );
                 }
-                /*
+                /**
                  * Для каждого узла формируем набор кнопок на основании его состояния.
                  */
                 targets.forEach(target => {
@@ -289,17 +358,30 @@ define(['eventbus'], function (EventBus) {
 
             function createMenu (targets) {
                 let list = [];
+
+                function menuEventHandler (action, guid) {
+                    switch (action) {
+                        case 'hookup': self.map.geoObjects.events.fire('hookup', { guid }); break;
+                        case 'breakup': self.map.geoObjects.events.fire('breakup', { guid }); break;
+                        case 'edit': self.map.geoObjects.events.fire('edit', { guid }); break;
+                        case 'remove': self.map.geoObjects.events.fire('remove', { guid }); break;
+                        case 'new': self.map.geoObjects.events.fire('new', { guid }); break;
+                        default: break;
+                    }
+                }
+
                 targets.forEach(target => {
                     let extProp = target.target.properties.get('external');
                     list.push({
-                        id:      extProp.guid,
-                        title:   extProp.name || extProp.description || 'No name',
+                        id: extProp.guid,
+                        title: extProp.name || extProp.description || 'No name',
                         buttons: target.buttons
                     });
                 });
+
                 let menuOptions = {
-                    list:           list,
-                    xy:             _event.get('pagePixels'),
+                    list: list,
+                    xy: _event.get('pagePixels'),
                     eventsHandlers: { buttons: menuEventHandler }
                 };
 
@@ -310,7 +392,11 @@ define(['eventbus'], function (EventBus) {
                 }
             }
 
-            function handler (event) {
+            function updateMenu (target) {
+                bindButtons([target]);
+            }
+
+            function contextMenu (event) {
                 _event = event;
 
                 let eventTarget = event.get('target');
@@ -320,7 +406,7 @@ define(['eventbus'], function (EventBus) {
                 createMenu(targets);
             }
 
-            return { handler };
+            return { contextMenu };
         }).bind(bundle)();
 
         return bundle;

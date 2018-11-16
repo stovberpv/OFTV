@@ -1,8 +1,9 @@
 {
     "parserOptions": {
-      "ecmaVersion": 9,
+      "ecmaVersion": 2018,
       "ecmaFeatures": {
-        "jsx": true
+        "jsx": true,
+        "experimentalObjectRestSpread": true
       },
       "sourceType": "module"
     },
@@ -63,7 +64,7 @@
         "flatTernaryExpressions": false,
         "ignoreComments": false
       }],
-      "key-spacing": ["error", { "beforeColon": false, "afterColon": true, "align": "value" }],
+      "key-spacing": ["error", { "beforeColon": false, "afterColon": true }],
       "keyword-spacing": ["error", { "before": true, "after": true }],
       "new-cap": ["error", { "newIsCap": true, "capIsNew": false }],
       "new-parens": "error",

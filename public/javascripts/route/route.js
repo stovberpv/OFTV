@@ -2,7 +2,7 @@ define([], function () {
     'use strict';
 
     function Route (obj) {
-        let route = {
+        let _route = {
             type: 'route',
             guid: obj.guid ? obj.guid : null,
             isDeprecated: obj.isDeprecated ? obj.isDeprecated : 0,
@@ -25,21 +25,21 @@ define([], function () {
             return arr.map((v, i) => _coords.slice((i * 2), (i * 2) + 2));
         }
 
-        this.giud = { set: val => { route.guid = val; }, get: () => { return route.guid; } };
-        this.isDeprecated = { set: val => { route.isDeprecated = val; }, get: () => { return route.isDeprecated; } };
-        this.coordinatePath = { set: val => { route.coordinatePath = val; }, get: () => { return route.coordinatePath; } };
-        this.routeDescription = { set: val => { route.routeDescription = val; }, get: () => { return route.routeDescription; } };
-        this.cableDescription = { set: val => { route.cableDescription = val; }, get: () => { return route.cableDescription; } };
-        this.cableLabelA = { set: val => { route.cableLabelA = val; }, get: () => { return route.cableLabelA; } };
-        this.cableLabelB = { set: val => { route.cableLabelB = val; }, get: () => { return route.cableLabelB; } };
-        this.cableLength = { set: val => { route.cableLength = val; }, get: () => { return route.cableLength; } };
-        this.cableCores = { set: val => { route.cableCores = val; }, get: () => { return route.cableCores; } };
-        this.cableType = { set: val => { route.cableType = val; }, get: () => { return route.cableType; } };
+        this.giud = { set: val => { _route.guid = val; }, get: () => { return _route.guid; } };
+        this.isDeprecated = { set: val => { _route.isDeprecated = val; }, get: () => { return _route.isDeprecated; } };
+        this.coordinatePath = { set: val => { _route.coordinatePath = val; }, get: () => { return _route.coordinatePath; } };
+        this.routeDescription = { set: val => { _route.routeDescription = val; }, get: () => { return _route.routeDescription; } };
+        this.cableDescription = { set: val => { _route.cableDescription = val; }, get: () => { return _route.cableDescription; } };
+        this.cableLabelA = { set: val => { _route.cableLabelA = val; }, get: () => { return _route.cableLabelA; } };
+        this.cableLabelB = { set: val => { _route.cableLabelB = val; }, get: () => { return _route.cableLabelB; } };
+        this.cableLength = { set: val => { _route.cableLength = val; }, get: () => { return _route.cableLength; } };
+        this.cableCores = { set: val => { _route.cableCores = val; }, get: () => { return _route.cableCores; } };
+        this.cableType = { set: val => { _route.cableType = val; }, get: () => { return _route.cableType; } };
 
         this.toPrimitive = () => {
-            let _route = route;
-            _route.coordinatePath = _route.coordinatePath.toString();
-            return _route;
+            let routePrimitive = Object.assign({}, _route);
+            routePrimitive.coordinatePath = routePrimitive.coordinatePath.toString();
+            return routePrimitive;
         };
 
         return this;
